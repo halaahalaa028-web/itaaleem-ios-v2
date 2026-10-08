@@ -3,6 +3,7 @@ import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/network/api_endpoints.dart';
 import 'package:itaaleem/core/network/auth_events.dart';
 import 'package:itaaleem/core/network/center_deactivated_events.dart';
+import 'package:itaaleem/core/network/device_lock_events.dart';
 import 'package:itaaleem/core/storage/secure_storage_service.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -98,14 +99,20 @@ class RateLimitRetryInterceptor extends Interceptor {
   }
 }
 
+/// Shown when the server rejects this device without a message of its own.
+const deviceLockFallbackMessage =
+    'حسابك مسجّل على جهاز آخر. تواصل مع إدارة المركز لتغيير الجهاز.';
+
 class ErrorMappingInterceptor extends Interceptor {
   ErrorMappingInterceptor(
     this._unauthorizedEvents,
     this._centerDeactivatedEvents,
+    this._deviceLockEvents,
   );
 
   final UnauthorizedEvents _unauthorizedEvents;
   final CenterDeactivatedEvents _centerDeactivatedEvents;
+  final DeviceLockEvents _deviceLockEvents;
 
   /// Endpoints that already handle their own 401 locally — login/register
   /// simply mean "wrong credentials" (there's no session to end), and the
@@ -122,6 +129,16 @@ class ErrorMappingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     final failure = _mapToFailure(err);
+    // This device was removed from the account mid-session — a clean logout
+    // plus an explanation, not the generic 401 path. Login/register show
+    // their own dialog instead (there's no session to end yet).
+    if (failure is ServerFailure &&
+        failure.isDeviceLock &&
+        err.requestOptions.path != ApiEndpoints.login &&
+        err.requestOptions.path != ApiEndpoints.register) {
+      _deviceLockEvents.notify(failure.message);
+      return handler.next(err.copyWith(error: failure));
+    }
     // `/admin/*` (the in-app dashboard) may sit behind a different guard
     // server-side — a 401 there means "not an admin", not a dead session.
     if (failure is UnauthorizedFailure &&
@@ -155,6 +172,18 @@ class ErrorMappingInterceptor extends Interceptor {
     }
   }
 
+  /// `code` / `error_code`, top level or nested under `data`/`error`.
+  static String? _errorCode(Object? data) {
+    if (data is! Map) return null;
+    for (final source in [data, data['data'], data['error']]) {
+      if (source is Map) {
+        final v = source['code'] ?? source['error_code'];
+        if (v is String && v.isNotEmpty) return v.toLowerCase();
+      }
+    }
+    return null;
+  }
+
   Failure _mapStatusCode(DioException err) {
     final statusCode = err.response?.statusCode;
     final data = err.response?.data;
@@ -164,6 +193,20 @@ class ErrorMappingInterceptor extends Interceptor {
         return ErrorMessages.translate(data['message'] as String);
       }
       return ErrorMessages.generic;
+    }
+
+    if (statusCode == 401 || statusCode == 403) {
+      final code = _errorCode(data);
+      if (code != null && code.startsWith('device')) {
+        final raw = data is Map ? data['message'] : null;
+        return ServerFailure(
+          raw is String && raw.trim().isNotEmpty
+              ? raw
+              : deviceLockFallbackMessage,
+          statusCode: statusCode,
+          code: code,
+        );
+      }
     }
 
     switch (statusCode) {
@@ -279,6 +322,7 @@ final dioClientProvider = Provider<Dio>((ref) {
     ErrorMappingInterceptor(
       ref.watch(unauthorizedEventsProvider),
       ref.watch(centerDeactivatedEventsProvider),
+      ref.watch(deviceLockEventsProvider),
     ),
   );
 

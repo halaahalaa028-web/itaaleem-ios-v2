@@ -1,10 +1,12 @@
 import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/core/localization/generated/app_localizations.dart';
 import 'package:itaaleem/core/utils/platform_utils.dart';
+import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/widgets/app_input.dart';
 import 'package:itaaleem/core/widgets/app_toast.dart';
 import 'package:itaaleem/core/widgets/auth_shell.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
+import 'package:itaaleem/features/auth/presentation/widgets/device_lock_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,6 +49,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!mounted) return;
     setState(() => _submitting = false);
 
+    if (failure is ServerFailure && failure.isDeviceLock) {
+      await showDeviceLockDialog(context, ref, message: failure.message);
+      return;
+    }
     if (failure != null) {
       AppToast.showError(
         context,

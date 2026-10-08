@@ -43,7 +43,7 @@ class AuthController extends AsyncNotifier<Student?> {
   /// The splash's minimum duration used to live here (a fixed delay before
   /// this resolved); it's now `appStartupProvider`'s job, running
   /// concurrently with the restore instead of in front of it.
-  static const _restoreGracePeriod = Duration(seconds: 2);
+  static const _restoreGracePeriod = Duration(milliseconds: 700);
 
   @override
   Future<Student?> build() async {
@@ -57,8 +57,21 @@ class AuthController extends AsyncNotifier<Student?> {
     // logs out through the 401 handler; with no cache we keep waiting).
     return restoreFuture.timeout(
       _restoreGracePeriod,
-      onTimeout: () async =>
-          (await repository.cachedSession()) ?? await restoreFuture,
+      onTimeout: () async {
+        final cached = await repository.cachedSession();
+        if (cached == null) return restoreFuture;
+        // Stale-while-revalidate: enter with the cache now, swap in the
+        // fresh profile when it lands — unless the session changed meanwhile
+        // (logout / another login).
+        unawaited(
+          restoreFuture.then((fresh) {
+            if (fresh != null && state.valueOrNull?.id == cached.id) {
+              state = AsyncData(fresh);
+            }
+          }, onError: (Object _) {}),
+        );
+        return cached;
+      },
     );
   }
 

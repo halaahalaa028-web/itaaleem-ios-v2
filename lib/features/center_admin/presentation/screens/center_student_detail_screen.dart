@@ -46,6 +46,11 @@ class CenterStudentDetailScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
               if (student != null) _ProfileCard(student: student),
+              if (student != null)
+                _ResetDevicesButton(
+                  studentId: studentId,
+                  studentName: student.title,
+                ),
               if (async.isLoading && async.valueOrNull == null) ...[
                 const SizedBox(height: AppSpacing.lg),
                 const ShimmerList(count: 3),
@@ -65,6 +70,50 @@ class CenterStudentDetailScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// `POST students/{id}/reset-devices` after a confirmation — for a student
+/// who changed phones and is now blocked by the one-device lock.
+class _ResetDevicesButton extends ConsumerWidget {
+  const _ResetDevicesButton({
+    required this.studentId,
+    required this.studentName,
+  });
+
+  final int studentId;
+  final String studentName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.phonelink_erase_rounded),
+        label: const Text('إعادة تعيين الأجهزة'),
+        onPressed: () async {
+          final ok = await confirmAdmin(
+            context,
+            title: 'إعادة تعيين أجهزة $studentName',
+            message:
+                'سيتم تسجيل خروج الطالب من كل الأجهزة، '
+                'ويقدر يدخل من جهاز جديد',
+            confirmLabel: 'إعادة التعيين',
+            destructive: true,
+          );
+          if (!ok || !context.mounted) return;
+          await runAdminAction<String>(
+            context,
+            ref,
+            () => ref
+                .read(centerAdminRepositoryProvider)
+                .resetStudentDevices(studentId),
+            success: 'تم إعادة تعيين أجهزة الطالب',
+            successOf: (message) => message,
+          );
+        },
       ),
     );
   }

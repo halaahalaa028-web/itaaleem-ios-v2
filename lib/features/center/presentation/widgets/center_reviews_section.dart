@@ -198,6 +198,13 @@ class _Content extends StatelessWidget {
             review: mine,
             trailing: OwnReviewMenu(centerId: centerId, review: mine),
           ),
+          const SizedBox(height: AppSpacing.sm),
+          AppButton.secondary(
+            'تعديل تقييمي',
+            icon: Icons.edit_rounded,
+            onPressed: () =>
+                context.push('$centerReviewFormPath/$centerId', extra: mine),
+          ),
         ],
         if (latest.where((r) => !r.isOwner).isNotEmpty) ...[
           const SizedBox(height: AppSpacing.base),

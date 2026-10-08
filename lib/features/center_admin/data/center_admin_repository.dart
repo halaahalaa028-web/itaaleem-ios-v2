@@ -191,6 +191,19 @@ class CenterAdminRepository {
     }
   }
 
+  /// `POST students/{id}/reset-devices` — unbinds every device from the
+  /// student's account (and ends their sessions), so their next login from
+  /// any phone becomes the new bound device. Resolves to the server's
+  /// message when it sends one.
+  Future<String> resetStudentDevices(int studentId) async {
+    try {
+      final body = await _api.post('students/$studentId/reset-devices', {});
+      return _serverMessage(body) ?? 'تم إعادة تعيين أجهزة الطالب';
+    } on DioException catch (e) {
+      throw _failureOf(e);
+    }
+  }
+
   // --- Subscription requests ---------------------------------------------
 
   /// Pending subscription requests (`GET subscriptions?status=pending`) —
@@ -332,17 +345,38 @@ class CenterAdminRepository {
     ];
   });
 
-  /// `POST activation-codes` `{subject_ids, duration_months}` — returns the
-  /// created code record (its `code` text).
-  Future<AdminRecord> createActivationCode({
+  /// `POST activation-codes` `{count, subject_ids, duration_months}` —
+  /// `count` is required by the server (1–500 per call). Resolves to every
+  /// code created: the response's list (`data`, `data.codes`, `codes`), or
+  /// the single object when the server echoes just one.
+  Future<List<AdminRecord>> createActivationCodes({
+    required int count,
     required List<int> subjectIds,
     required int durationMonths,
   }) => _guard(() async {
     final body = await _api.post('activation-codes', {
+      'count': count,
       'subject_ids': subjectIds,
       'duration_months': durationMonths,
     });
-    return AdminRecord(extractAdminObject(body));
+    Object? listOf(Object? v) => v is Map ? (v['codes'] ?? v['items']) : null;
+    final data = body is Map ? body['data'] : null;
+    final raw = [
+      listOf(data),
+      listOf(body),
+      data,
+    ].firstWhere((v) => v is List, orElse: () => null);
+    if (raw is List) {
+      return [
+        for (final e in raw)
+          if (e is Map)
+            AdminRecord(Map<String, dynamic>.from(e))
+          else if (e is String)
+            AdminRecord({'code': e}),
+      ];
+    }
+    final one = extractAdminObject(body);
+    return one.isEmpty ? const [] : [AdminRecord(one)];
   });
 
   static int? _totalOf(Object? body) {

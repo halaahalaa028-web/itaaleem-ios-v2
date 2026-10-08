@@ -4,10 +4,13 @@ import 'package:itaaleem/features/center/presentation/providers/branding_provide
 import 'package:itaaleem/core/localization/generated/app_localizations.dart';
 import 'package:itaaleem/core/network/auth_events.dart';
 import 'package:itaaleem/core/network/connectivity_provider.dart';
+import 'package:itaaleem/core/network/device_lock_events.dart';
 import 'package:itaaleem/core/services/fcm_service.dart';
 import 'package:itaaleem/core/widgets/capture_guard.dart';
 import 'package:itaaleem/core/widgets/no_connection_screen.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
+import 'package:itaaleem/features/auth/presentation/widgets/device_lock_dialog.dart';
+import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
 import 'package:itaaleem/features/settings/presentation/providers/theme_mode_provider.dart';
 import 'package:itaaleem/features/video/data/offline/offline_license_checker.dart';
 import 'package:itaaleem/features/video/data/offline/offline_progress_sync_service.dart';
@@ -15,6 +18,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+/// Guards [App]'s device-lock listener against stacking dialogs.
+bool _deviceLockShowing = false;
 
 class App extends ConsumerWidget {
   const App({super.key});
@@ -63,6 +69,30 @@ class App extends ConsumerWidget {
       if (next.hasValue) {
         ref.read(authControllerProvider.notifier).forceLogout();
       }
+    });
+
+    // This device was removed from the account (e.g. the center admin reset
+    // the student's devices): log out cleanly, then say why. Several
+    // in-flight requests may fail at once — only the first one shows it.
+    ref.listen(deviceLockStreamProvider, (previous, next) async {
+      final message = next.valueOrNull;
+      if (message == null || _deviceLockShowing) return;
+      if (ref.read(authControllerProvider).valueOrNull == null) return;
+      _deviceLockShowing = true;
+      final center = ref.read(joinedCenterProvider);
+      await ref.read(authControllerProvider.notifier).forceLogout();
+      // Let the redirect to /login settle before opening the dialog.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      final context = rootNavigatorKey.currentContext;
+      if (context != null && context.mounted) {
+        await showDeviceLockDialog(
+          context,
+          ref,
+          message: message,
+          center: center,
+        );
+      }
+      _deviceLockShowing = false;
     });
 
     return MaterialApp.router(

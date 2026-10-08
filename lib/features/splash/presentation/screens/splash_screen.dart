@@ -39,10 +39,11 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with TickerProviderStateMixin {
-  /// 0–600ms logo, 600–1000ms room for the name, 1000–1500ms name + dots.
+  /// Logo in the first 40%, then room for the name, then name + dots
+  /// (intervals are fractions, so the whole intro scales with [duration]).
   late final AnimationController _intro = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1500),
+    duration: const Duration(milliseconds: 900),
   );
   late final AnimationController _dots = AnimationController(
     vsync: this,
@@ -50,7 +51,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   );
   late final AnimationController _exit = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 350),
+    duration: const Duration(milliseconds: 250),
   );
 
   /// Starts at 1 (the native splash's exact size, so the handoff doesn't

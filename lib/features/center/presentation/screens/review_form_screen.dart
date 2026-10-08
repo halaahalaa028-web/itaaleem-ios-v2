@@ -53,7 +53,9 @@ class _ReviewFormScreenState extends ConsumerState<ReviewFormScreen> {
       if (!mounted) return;
       AppToast.showSuccess(
         context,
-        existing == null ? 'تم إرسال تقييمك، شكراً لك' : 'تم تحديث تقييمك',
+        existing == null
+            ? 'شكرًا! تقييمك هيظهر بعد مراجعة إدارة المركز'
+            : 'تم تحديث تقييمك، هيظهر بعد مراجعة إدارة المركز',
       );
       context.pop();
     } catch (e) {

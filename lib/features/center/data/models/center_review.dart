@@ -8,6 +8,7 @@ class CenterReview {
     required this.studentName,
     this.studentAvatar,
     this.isOwner = false,
+    this.isApproved = true,
   });
 
   final int id;
@@ -19,6 +20,10 @@ class CenterReview {
 
   /// `true` when the signed-in student wrote this review.
   final bool isOwner;
+
+  /// `false` while the center admin hasn't approved it yet — only the
+  /// author ever sees an unapproved review. Missing field → approved.
+  final bool isApproved;
 
   factory CenterReview.fromJson(Map<String, dynamic> json) {
     final student = json['student'] ?? json['user'];
@@ -43,7 +48,16 @@ class CenterReview {
           str(studentMap?['avatar']) ??
           str(studentMap?['avatar_url']),
       isOwner: json['is_owner'] == true || json['is_owner'] == 1,
+      isApproved: _approved(json),
     );
+  }
+
+  static bool _approved(Map<String, dynamic> json) {
+    final v = json['is_approved'] ?? json['approved'];
+    if (v != null) return v == true || v == 1 || v == '1' || v == 'true';
+    final status = json['status']?.toString().toLowerCase();
+    if (status != null) return status == 'approved' || status == 'published';
+    return true;
   }
 }
 

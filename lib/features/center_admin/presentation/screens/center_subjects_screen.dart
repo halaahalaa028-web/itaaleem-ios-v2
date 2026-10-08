@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,10 +21,11 @@ Widget _subjectImage(BuildContext context, AdminRecord r) {
       color: scheme.tertiaryContainer,
       child: image == null
           ? Icon(Icons.menu_book_rounded, color: scheme.onTertiaryContainer)
-          : Image.network(
-              image,
+          : CachedNetworkImage(
+              imageUrl: image,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Icon(
+              memCacheWidth: 144,
+              errorWidget: (_, _, _) => Icon(
                 Icons.menu_book_rounded,
                 color: scheme.onTertiaryContainer,
               ),

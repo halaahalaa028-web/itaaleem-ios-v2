@@ -118,6 +118,31 @@ class ReviewCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    if (review.isOwner && !review.isApproved)
+                      Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.tertiaryContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'بانتظار الموافقة',
+                          style: TextStyle(
+                            fontFamily: 'Cairo',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onTertiaryContainer,
+                          ),
+                        ),
+                      ),
                     if (date != null)
                       Text(
                         date,

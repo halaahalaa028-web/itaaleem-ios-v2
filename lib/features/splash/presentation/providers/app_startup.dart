@@ -12,8 +12,10 @@ import 'package:itaaleem/features/onboarding/presentation/providers/permissions_
 const splashLogoAsset = 'assets/images/splash_logo.png';
 
 /// The splash stays up at least this long (counted from launch), so it
-/// reads as a deliberate branded moment rather than a flash.
-const minSplashDuration = Duration(seconds: 2);
+/// reads as a deliberate branded moment rather than a flash. Kept short:
+/// the session/center load (~1.1s cold on a mid-range phone) is what should
+/// set the pace, not a timer.
+const minSplashDuration = Duration(milliseconds: 1000);
 
 /// Past this, the splash stops waiting and shows its "تعذر الاتصال" state
 /// with a retry instead of hanging.
@@ -82,7 +84,7 @@ final splashReleasedProvider = NotifierProvider<SplashReleaseController, bool>(
 );
 
 class SplashReleaseController extends Notifier<bool> {
-  static const _fallback = Duration(milliseconds: 900);
+  static const _fallback = Duration(milliseconds: 350);
 
   @override
   bool build() {

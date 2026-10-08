@@ -15,9 +15,17 @@ sealed class Failure {
 /// The server responded with an error (4xx/5xx) that isn't one of the more
 /// specific cases below (validation, unauthorized).
 final class ServerFailure extends Failure {
-  const ServerFailure(super.message, {this.statusCode});
+  const ServerFailure(super.message, {this.statusCode, this.code});
 
   final int? statusCode;
+
+  /// The API's machine-readable `code` when it sends one (e.g.
+  /// `device_limit`).
+  final String? code;
+
+  /// The account is locked to another device (`device_limit`, or any other
+  /// `device_*` code on a 401/403).
+  bool get isDeviceLock => code != null && code!.startsWith('device');
 }
 
 /// No connectivity, DNS failure, timeout, socket exception, etc. — the

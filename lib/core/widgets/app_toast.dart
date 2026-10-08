@@ -44,7 +44,13 @@ class AppToast {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    // A Navigator's own context (e.g. `Navigator.of(ctx, rootNavigator:
+    // true).context`, captured so a toast survives its row being rebuilt)
+    // sits *above* that Navigator's Overlay, so the ancestor lookup finds
+    // nothing — fall back to the Navigator's overlay directly.
+    final overlay =
+        Overlay.maybeOf(context, rootOverlay: true) ??
+        Navigator.maybeOf(context, rootNavigator: true)?.overlay;
     if (overlay == null) return;
 
     late final OverlayEntry entry;
