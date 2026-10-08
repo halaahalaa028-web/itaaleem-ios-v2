@@ -8,10 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// session never hits the network, since it has no real center membership
 /// to scope the call to; [SubjectDetailScreen]'s demo path already renders
 /// its own dummy teacher name instead of reading this.
-final teachersProvider = FutureProvider.autoDispose<List<Teacher>>((
-  ref,
-) async {
+final teachersProvider = FutureProvider.autoDispose<List<Teacher>>((ref) async {
   final isDemo = ref.watch(isDemoSessionProvider);
   if (isDemo) return const [];
-  return ref.cached(() => ref.read(teachersRemoteDataSourceProvider).getTeachers());
+  return ref.cached(
+    () => ref.read(teachersRemoteDataSourceProvider).getTeachers(),
+  );
 });

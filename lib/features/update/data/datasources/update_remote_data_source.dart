@@ -15,13 +15,13 @@ class UpdateRemoteDataSource {
       options: skipAuthOptions,
     );
     final data = response.data?['data'];
-    final body = data is Map<String, dynamic> ? data : (response.data ?? const <String, dynamic>{});
+    final body = data is Map<String, dynamic>
+        ? data
+        : (response.data ?? const <String, dynamic>{});
     return AppVersionInfoModel.fromJson(body);
   }
 }
 
-final updateRemoteDataSourceProvider = Provider<UpdateRemoteDataSource>((
-  ref,
-) {
+final updateRemoteDataSourceProvider = Provider<UpdateRemoteDataSource>((ref) {
   return UpdateRemoteDataSource(ref.watch(dioClientProvider));
 });

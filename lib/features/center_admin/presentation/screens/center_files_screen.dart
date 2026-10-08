@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/utils/open_file_in_app.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/network/api_endpoints.dart';
@@ -51,49 +52,51 @@ class _CenterFilesScreenState extends ConsumerState<CenterFilesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('الملفات')),
-      body: AdminDataTable(
-        path: 'files',
-        filters: {'subject_id': _subjectId},
-        searchHint: 'ابحث باسم الملف',
-        emptyTitle: 'لا توجد ملفات',
-        emptyIcon: Icons.folder_open_rounded,
-        header: AdminSubjectFilter(
-          selected: _subjectId,
-          onChanged: (id) => setState(() => _subjectId = id),
-        ),
-        itemBuilder: (context, r) {
-          final url = ApiEndpoints.mediaUrl(
-            r.text(['url', 'file_url', 'path', 'file']),
-          );
-          return AdminRecordCard(
-            title: r.title,
-            leading: AdminAvatar(name: '', icon: _iconFor(url ?? r.title)),
-            lines: [
-              r.nestedName('subject') ?? r.nestedName('lecture'),
-              [
-                ?r.text(['size', 'size_label']),
-                adminDate(r.date(['created_at'])),
-              ].join(' • '),
-            ],
-            onTap: url == null
-                ? null
-                : () => openFileInApp(context, url, title: r.title),
-            menu: [
-              if (url != null)
+      body: AppBackground(
+        child: AdminDataTable(
+          path: 'files',
+          filters: {'subject_id': _subjectId},
+          searchHint: 'ابحث باسم الملف',
+          emptyTitle: 'لا توجد ملفات',
+          emptyIcon: Icons.folder_open_rounded,
+          header: AdminSubjectFilter(
+            selected: _subjectId,
+            onChanged: (id) => setState(() => _subjectId = id),
+          ),
+          itemBuilder: (context, r) {
+            final url = ApiEndpoints.mediaUrl(
+              r.text(['url', 'file_url', 'path', 'file']),
+            );
+            return AdminRecordCard(
+              title: r.title,
+              leading: AdminAvatar(name: '', icon: _iconFor(url ?? r.title)),
+              lines: [
+                r.nestedName('subject') ?? r.nestedName('lecture'),
+                [
+                  ?r.text(['size', 'size_label']),
+                  adminDate(r.date(['created_at'])),
+                ].join(' • '),
+              ],
+              onTap: url == null
+                  ? null
+                  : () => openFileInApp(context, url, title: r.title),
+              menu: [
+                if (url != null)
+                  AdminMenuAction(
+                    'فتح',
+                    Icons.open_in_new_rounded,
+                    () => openFileInApp(context, url, title: r.title),
+                  ),
                 AdminMenuAction(
-                  'فتح',
-                  Icons.open_in_new_rounded,
-                  () => openFileInApp(context, url, title: r.title),
+                  'حذف',
+                  Icons.delete_rounded,
+                  () => _delete(r),
+                  destructive: true,
                 ),
-              AdminMenuAction(
-                'حذف',
-                Icons.delete_rounded,
-                () => _delete(r),
-                destructive: true,
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
   }

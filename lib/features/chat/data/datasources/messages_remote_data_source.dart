@@ -9,7 +9,9 @@ MessageModel _messageFromJson(Map<String, dynamic> json) {
   final createdAtRaw = json['created_at'] as String?;
   final readAtRaw = json['read_at'] as String?;
   return MessageModel(
-    id: json['id']?.toString() ?? 'msg-${DateTime.now().microsecondsSinceEpoch}',
+    id:
+        json['id']?.toString() ??
+        'msg-${DateTime.now().microsecondsSinceEpoch}',
     body: json['body'] as String? ?? '',
     senderId: 0,
     receiverId: 0,
@@ -52,7 +54,9 @@ class MessagesRemoteDataSource {
   Future<List<MessageModel>> getMessages() async {
     final response = await _dio.get<dynamic>(ApiEndpoints.messages);
     if (kDebugMode) {
-      debugPrint('>>> GET ${ApiEndpoints.messages} raw response: ${response.data}');
+      debugPrint(
+        '>>> GET ${ApiEndpoints.messages} raw response: ${response.data}',
+      );
     }
     final rawList = _extractItems(response.data);
     final messages = rawList

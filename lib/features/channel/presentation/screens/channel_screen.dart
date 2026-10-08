@@ -4,6 +4,7 @@ import 'package:itaaleem/features/channel/presentation/providers/channel_provide
 import 'package:itaaleem/features/channel/presentation/widgets/channel_message_card.dart';
 import 'package:itaaleem/features/channel/presentation/widgets/channel_shimmer.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
@@ -32,44 +33,47 @@ class ChannelScreen extends ConsumerWidget {
         automaticallyImplyLeading: false,
         title: const Text('القناة'),
       ),
-      body: RefreshIndicator(
-        color: context.palette.primary,
-        onRefresh: () => ref.refresh(channelMessagesProvider.future),
-        child: messagesAsync.when(
-          loading: () => const ChannelShimmer(),
-          error: (error, stackTrace) => ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              SizedBox(
-                height: 420,
-                child: ErrorView(
-                  message: 'تعذر تحميل رسائل القناة، حاول مرة أخرى',
-                  retryLabel: 'إعادة المحاولة',
-                  onRetry: () => ref.invalidate(channelMessagesProvider),
-                ),
-              ),
-            ],
-          ),
-          data: (messages) {
-            if (messages.isEmpty) {
-              return ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: const [
-                  SizedBox(height: 420, child: _EmptyChannel()),
-                ],
-              );
-            }
-            return ListView.separated(
+      body: AppBackground(
+        child: RefreshIndicator(
+          color: context.palette.primary,
+          onRefresh: () => ref.refresh(channelMessagesProvider.future),
+          child: messagesAsync.when(
+            loading: () => const ChannelShimmer(),
+            error: (error, stackTrace) => ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsetsDirectional.all(16),
-              itemCount: messages.length,
-              separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.md),
-              itemBuilder: (context, index) => FadeSlideIn(
-                delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
-                child: ChannelMessageCard(message: messages[index]),
-              ),
-            );
-          },
+              children: [
+                SizedBox(
+                  height: 420,
+                  child: ErrorView(
+                    message: 'تعذر تحميل رسائل القناة، حاول مرة أخرى',
+                    retryLabel: 'إعادة المحاولة',
+                    onRetry: () => ref.invalidate(channelMessagesProvider),
+                  ),
+                ),
+              ],
+            ),
+            data: (messages) {
+              if (messages.isEmpty) {
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const [
+                    SizedBox(height: 420, child: _EmptyChannel()),
+                  ],
+                );
+              }
+              return ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsetsDirectional.all(16),
+                itemCount: messages.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AppSpacing.md),
+                itemBuilder: (context, index) => FadeSlideIn(
+                  delay: Duration(milliseconds: 30 * index.clamp(0, 10)),
+                  child: ChannelMessageCard(message: messages[index]),
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

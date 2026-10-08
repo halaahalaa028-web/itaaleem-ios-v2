@@ -13,12 +13,14 @@ import 'package:itaaleem/features/subjects/presentation/utils/pdf_download.dart'
 import 'package:itaaleem/features/subjects/presentation/widgets/lesson_access.dart';
 import 'package:itaaleem/features/video/presentation/widgets/lecture_download_button.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/subjects/presentation/utils/protected_file_open.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/features/subscriptions/presentation/widgets/contact_center_access_sheet.dart';
 import 'package:itaaleem/core/utils/platform_utils.dart';
 import 'package:itaaleem/core/utils/youtube_utils.dart';
 import 'package:itaaleem/features/courses/presentation/widgets/players/player_selection_sheet.dart';
-import 'package:itaaleem/core/utils/open_file_in_app.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -99,7 +101,7 @@ class LessonDetailScreen extends ConsumerWidget {
     // `has_video: true` but no usable `video_url`: treat as a lesson without
     // video — never push a player screen with nothing to play (black screen).
     if (!lesson.canPlayVideo) {
-      if (lesson.hasPdf) _openAttachments(context, lesson);
+      if (lesson.hasPdfFile) _openAttachments(context, lesson);
       return;
     }
     // YouTube: the student picks the player first; dismissing cancels.
@@ -171,74 +173,83 @@ class LessonDetailScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () => refreshAll(ref, subjectId: subjectId),
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _LessonHeaderCard(lesson: lesson),
-                const SizedBox(height: AppSpacing.lg),
-                _VideoHeroCard(
-                  // Locked -> subscription-request sheet; otherwise always
-                  // tappable; a lesson with no playable video_url is shown
-                  // as having no video.
-                  hasVideo: lesson.canPlayVideo,
-                  locked: locked,
-                  onTap: () => _openVideo(context, ref, lesson, locked: locked),
-                ),
-                if (!locked && lesson.canPlayVideo) ...[
-                  const SizedBox(height: AppSpacing.md),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: LectureDownloadButton(
-                      lectureId: lesson.id,
-                      subjectName: '',
-                      lessonTitle: lesson.title,
-                      sourceUrl: lesson.videoUrl ?? '',
+      body: AppBackground(
+        child: SafeArea(
+          child: RefreshIndicator(
+            onRefresh: () => refreshAll(ref, subjectId: subjectId),
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Reveal(child: _LessonHeaderCard(lesson: lesson)),
+                  const SizedBox(height: AppSpacing.lg),
+                  Reveal(
+                    index: 1,
+                    child: _VideoHeroCard(
+                      // Locked -> subscription-request sheet; otherwise always
+                      // tappable; a lesson with no playable video_url is shown
+                      // as having no video.
+                      hasVideo: lesson.canPlayVideo,
+                      locked: locked,
+                      onTap: () =>
+                          _openVideo(context, ref, lesson, locked: locked),
+                    ),
+                  ),
+                  if (!locked && lesson.canPlayVideo) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Align(
+                      alignment: AlignmentDirectional.centerStart,
+                      child: LectureDownloadButton(
+                        lectureId: lesson.id,
+                        subjectName: '',
+                        lessonTitle: lesson.title,
+                        sourceUrl: lesson.videoUrl ?? '',
+                      ),
+                    ),
+                  ],
+                  // Subject → lecture → video → its exams, right here.
+                  // Hidden entirely when the lecture has no exams.
+                  LectureExamsSection(
+                    subjectId: subjectId,
+                    header: const Padding(
+                      padding: EdgeInsets.only(top: 28, bottom: 14),
+                      child: _SectionTitle(title: 'الامتحانات'),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  const _SectionTitle(title: 'المحتوى التعليمي'),
+                  const SizedBox(height: 14),
+                  Reveal(
+                    index: 2,
+                    child: GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: 1.05,
+                      children: [
+                        _ContentTile(
+                          icon: Icons.attach_file_rounded,
+                          label: 'المرفقات',
+                          color: _attachmentColor(context),
+                          onTap: () => _openAttachments(context, lesson),
+                        ),
+                        // Exams are the lecture's own (section above);
+                        // assignments are hidden app-wide.
+                        _ContentTile(
+                          icon: Icons.help_rounded,
+                          label: 'اسأل سؤالاً',
+                          color: _questionColor(context),
+                          onTap: () => _openQuestion(context),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-                // Subject → lecture → video → its exams, right here.
-                // Hidden entirely when the lecture has no exams.
-                LectureExamsSection(
-                  lectureId: lesson.id,
-                  header: const Padding(
-                    padding: EdgeInsets.only(top: 28, bottom: 14),
-                    child: _SectionTitle(title: 'الامتحانات'),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const _SectionTitle(title: 'المحتوى التعليمي'),
-                const SizedBox(height: 14),
-                GridView.count(
-                  crossAxisCount: 2,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: 1.05,
-                  children: [
-                    _ContentTile(
-                      icon: Icons.attach_file_rounded,
-                      label: 'المرفقات',
-                      color: _attachmentColor(context),
-                      onTap: () => _openAttachments(context, lesson),
-                    ),
-                    // Exams are the lecture's own (section above);
-                    // assignments are hidden app-wide.
-                    _ContentTile(
-                      icon: Icons.help_rounded,
-                      label: 'اسأل سؤالاً',
-                      color: _questionColor(context),
-                      onTap: () => _openQuestion(context),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -254,51 +265,83 @@ class _LessonHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final thumb = lesson.thumbnailUrl;
+    final hasThumb = thumb != null && thumb.isNotEmpty;
     return AppCard(
-      child: Row(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: context.palette.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(AppRadius.md + 2),
-            ),
-            child: Icon(
-              Icons.menu_book_rounded,
-              color: context.palette.primary,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  lesson.title,
-                  style: const TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+          if (hasThumb)
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Hero(
+                tag: 'lesson-thumb-${lesson.id}',
+                child: CachedNetworkImage(
+                  imageUrl: thumb,
+                  fit: BoxFit.cover,
+                  filterQuality: FilterQuality.high,
+                  placeholder: (_, _) =>
+                      const ShimmerBox(height: double.infinity, radius: 0),
+                  errorWidget: (_, _, _) => DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: context.palette.brandGradient,
+                    ),
                   ),
                 ),
-                if (lesson.durationMinutes != null || lesson.isFree) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Row(
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.all(AppSpacing.cardPadding),
+            child: Row(
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: context.palette.brandGradient,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(
+                    Icons.menu_book_rounded,
+                    color: context.palette.onPrimary,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (lesson.durationMinutes != null)
-                        Text(
-                          '${lesson.durationMinutes} دقيقة',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: context.palette.textSecondary),
+                      Text(
+                        lesson.title,
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
                         ),
-                      if (lesson.durationMinutes != null && lesson.isFree)
-                        const SizedBox(width: AppSpacing.sm),
-                      if (lesson.isFree) const FreeLessonBadge(),
+                      ),
+                      if (lesson.durationMinutes != null || lesson.isFree) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Row(
+                          children: [
+                            if (lesson.durationMinutes != null)
+                              Text(
+                                '${lesson.durationMinutes} دقيقة',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: context.palette.textSecondary,
+                                    ),
+                              ),
+                            if (lesson.durationMinutes != null && lesson.isFree)
+                              const SizedBox(width: AppSpacing.sm),
+                            if (lesson.isFree) const FreeLessonBadge(),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
-                ],
+                ),
               ],
             ),
           ),
@@ -321,80 +364,93 @@ class _VideoHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: hasVideo || locked ? 1 : 0.55,
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Ink(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              gradient: hasVideo && !locked
-                  ? context.palette.brandGradient
-                  : LinearGradient(
-                      colors: [
-                        context.palette.textTertiary,
-                        context.palette.textSecondary,
-                      ],
-                    ),
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        locked
-                            ? PlatformUtils.hideSubscriptions
-                                  ? 'فيديوهات المحاضرة 🔒'
-                                  : 'فيديوهات المحاضرة — مدفوع 🔒'
-                            : 'فيديوهات المحاضرة',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: context.palette.onPrimary,
+    return PressableScale(
+      child: Opacity(
+        opacity: hasVideo || locked ? 1 : 0.55,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            boxShadow: hasVideo && !locked
+                ? DesignTokens.softShadow(
+                    Theme.of(context).colorScheme,
+                    strength: 1.6,
+                  )
+                : null,
+          ),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(AppRadius.xxl),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: onTap,
+              child: Ink(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  gradient: hasVideo && !locked
+                      ? context.palette.brandGradient
+                      : LinearGradient(
+                          colors: [
+                            context.palette.textTertiary,
+                            context.palette.textSecondary,
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        locked
-                            ? PlatformUtils.hideSubscriptions
-                                  ? lockedContentMessage
-                                  : 'محتوى مدفوع — اضغط لطلب الاشتراك'
-                            : hasVideo
-                            ? 'مشاهدة الفيديو'
-                            : 'لا يوجد فيديو متاح',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 13,
-                          color: context.palette.onPrimary.withValues(
-                            alpha: 0.85,
+                  borderRadius: BorderRadius.circular(AppRadius.xxl),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            locked
+                                ? PlatformUtils.hideSubscriptions
+                                      ? 'فيديوهات المحاضرة 🔒'
+                                      : 'فيديوهات المحاضرة — مدفوع 🔒'
+                                : 'فيديوهات المحاضرة',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: context.palette.onPrimary,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 6),
+                          Text(
+                            locked
+                                ? PlatformUtils.hideSubscriptions
+                                      ? lockedContentMessage
+                                      : 'محتوى مدفوع — اضغط لطلب الاشتراك'
+                                : hasVideo
+                                ? 'مشاهدة الفيديو'
+                                : 'لا يوجد فيديو متاح',
+                            style: TextStyle(
+                              fontFamily: 'Cairo',
+                              fontSize: 13,
+                              color: context.palette.onPrimary.withValues(
+                                alpha: 0.85,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: context.palette.onPrimary.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        locked ? Icons.lock_rounded : Icons.play_arrow_rounded,
+                        color: context.palette.onPrimary,
+                        size: 32,
+                      ),
+                    ),
+                  ],
                 ),
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: context.palette.onPrimary.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    locked ? Icons.lock_rounded : Icons.play_arrow_rounded,
-                    color: context.palette.onPrimary,
-                    size: 32,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -416,7 +472,14 @@ class _SectionTitle extends StatelessWidget {
           width: 4,
           height: 18,
           decoration: BoxDecoration(
-            color: context.palette.primary,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.secondary,
+              ],
+            ),
             borderRadius: BorderRadius.circular(AppRadius.full),
           ),
         ),
@@ -459,8 +522,15 @@ class _ContentTile extends StatelessWidget {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.16),
-              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: AlignmentDirectional.topStart,
+                end: AlignmentDirectional.bottomEnd,
+                colors: [
+                  color.withValues(alpha: 0.22),
+                  color.withValues(alpha: 0.08),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(icon, color: color, size: 22),
           ),
@@ -507,50 +577,6 @@ class LessonAttachmentsScreen extends ConsumerWidget {
   final SubjectLesson lesson;
   final int subjectId;
 
-  void _openPdf(
-    BuildContext context,
-    String title,
-    String? url, {
-    required bool downloadable,
-  }) {
-    context.push<void>(
-      lessonPdfPath,
-      extra: LessonPdfArgs(
-        title: title,
-        pdfUrl: url,
-        downloadable: downloadable,
-      ),
-    );
-  }
-
-  Future<void> _openLessonPdf(BuildContext context) async {
-    if (kDebugMode) {
-      debugPrint(
-        '>>> LESSON pdf_url: ${lesson.pdfUrl}, pdfUrl: ${lesson.pdfUrl}',
-      );
-    }
-    _openPdf(
-      context,
-      lesson.title,
-      lesson.pdfUrl,
-      downloadable: lesson.isDownloadable,
-    );
-  }
-
-  Future<void> _openFile(BuildContext context, SubjectAttachment file) async {
-    if (file.isPdf) {
-      _openPdf(context, file.name, file.url, downloadable: file.isDownloadable);
-      return;
-    }
-    await openFileInApp(
-      context,
-      file.url,
-      title: file.name,
-      type: file.type,
-      downloadable: file.isDownloadable,
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final attachmentsAsync = ref.watch(
@@ -559,64 +585,83 @@ class LessonAttachmentsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('المرفقات')),
-      body: attachmentsAsync.when(
-        loading: () => const ShimmerList(count: 4, thumbnailSize: 44),
-        error: (error, _) => ErrorView(
-          message: failureOf(error).message,
-          retryLabel: 'إعادة المحاولة',
-          onRetry: () =>
-              ref.invalidate(lessonAttachmentsProvider((subjectId, lesson.id))),
-        ),
-        data: (files) {
-          if (!lesson.hasPdf && files.isEmpty) {
-            return Center(
-              child: Text(
-                'لا توجد مرفقات لهذه المحاضرة',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.palette.textSecondary,
+      body: AppBackground(
+        child: attachmentsAsync.when(
+          loading: () => const ShimmerList(count: 4, thumbnailSize: 44),
+          error: (error, _) => ErrorView(
+            message: failureOf(error).message,
+            retryLabel: 'إعادة المحاولة',
+            onRetry: () => ref.invalidate(
+              lessonAttachmentsProvider((subjectId, lesson.id)),
+            ),
+          ),
+          data: (allFiles) {
+            // The lesson's own PDF may also come back as an id-less
+            // `source: lesson_pdf` attachment — show it once.
+            final files = [
+              for (final f in allFiles)
+                if (!(lesson.hasPdfFile &&
+                    f.source == 'lesson_pdf' &&
+                    f.lessonId == lesson.id))
+                  f,
+            ];
+            if (!lesson.hasPdfFile && files.isEmpty) {
+              return Center(
+                child: Text(
+                  'لا توجد مرفقات لهذه المحاضرة',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.palette.textSecondary,
+                  ),
                 ),
-              ),
+              );
+            }
+            return ListView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              children: [
+                if (lesson.hasPdfFile) ...[
+                  _AttachmentTile(
+                    name: '${lesson.title} — ملف المحاضرة',
+                    type: 'PDF',
+                    locked: lesson.pdfLocked,
+                    onTap: () => openLessonPdf(context, lesson),
+                    onDownload: lesson.isDownloadable && !lesson.pdfLocked
+                        ? () => downloadPdf(
+                            context,
+                            ref,
+                            url: lesson.pdfUrl ?? '',
+                            title: lesson.title,
+                            fileRef: lesson.pdfRef,
+                          )
+                        : null,
+                  ),
+                  if (files.isNotEmpty) const SizedBox(height: AppSpacing.md),
+                ],
+                for (var i = 0; i < files.length; i++) ...[
+                  if (i > 0) const SizedBox(height: AppSpacing.md),
+                  _AttachmentTile(
+                    name: files[i].name,
+                    type: files[i].type,
+                    sizeLabel: files[i].sizeLabel,
+                    locked: files[i].isLocked,
+                    onTap: () => openAttachment(context, ref, files[i]),
+                    onDownload:
+                        files[i].isPdf &&
+                            files[i].isDownloadable &&
+                            !files[i].isLocked
+                        ? () => downloadPdf(
+                            context,
+                            ref,
+                            url: files[i].url,
+                            title: files[i].name,
+                            fileRef: files[i].ref,
+                          )
+                        : null,
+                  ),
+                ],
+              ],
             );
-          }
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            children: [
-              if (lesson.hasPdf) ...[
-                _AttachmentTile(
-                  name: '${lesson.title} — ملف المحاضرة',
-                  type: 'PDF',
-                  onTap: () => _openLessonPdf(context),
-                  onDownload: lesson.isDownloadable
-                      ? () => downloadPdf(
-                          context,
-                          ref,
-                          url: lesson.pdfUrl!,
-                          title: lesson.title,
-                        )
-                      : null,
-                ),
-                if (files.isNotEmpty) const SizedBox(height: AppSpacing.md),
-              ],
-              for (var i = 0; i < files.length; i++) ...[
-                if (i > 0) const SizedBox(height: AppSpacing.md),
-                _AttachmentTile(
-                  name: files[i].name,
-                  type: files[i].type,
-                  sizeLabel: files[i].sizeLabel,
-                  onTap: () => _openFile(context, files[i]),
-                  onDownload: files[i].isPdf && files[i].isDownloadable
-                      ? () => downloadPdf(
-                          context,
-                          ref,
-                          url: files[i].url,
-                          title: files[i].name,
-                        )
-                      : null,
-                ),
-              ],
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }
@@ -629,8 +674,12 @@ class _AttachmentTile extends StatelessWidget {
     this.type,
     this.sizeLabel,
     this.onDownload,
+    this.locked = false,
   });
 
+  /// Shows a lock instead of the open affordance; tapping opens the
+  /// locked-content sheet (handled by [onTap]).
+  final bool locked;
   final VoidCallback? onDownload;
   final String name;
   final String? type;
@@ -644,6 +693,7 @@ class _AttachmentTile extends StatelessWidget {
       if (sizeLabel != null) sizeLabel!,
     ];
     return AppCard(
+      onTap: onTap,
       child: Row(
         children: [
           Container(
@@ -690,7 +740,17 @@ class _AttachmentTile extends StatelessWidget {
               onPressed: onDownload,
               icon: const Icon(Icons.download_rounded),
             ),
-          TextButton(onPressed: onTap, child: const Text('فتح')),
+          if (locked)
+            IconButton(
+              tooltip: 'مقفول',
+              onPressed: onTap,
+              icon: Icon(
+                Icons.lock_rounded,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            )
+          else
+            TextButton(onPressed: onTap, child: const Text('فتح')),
         ],
       ),
     );
@@ -708,80 +768,84 @@ class LessonExamsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('الامتحانات')),
-      body: exams.isEmpty
-          ? Center(
-              child: Text(
-                'مفيش امتحانات متاحة بعد',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.palette.textSecondary,
-                ),
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              itemCount: exams.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: AppSpacing.md),
-              itemBuilder: (context, index) {
-                final exam = exams[index];
-                return AppCard(
-                  onTap: exam.isLocked
-                      ? null
-                      : () => context.push('/exams/${exam.id}'),
-                  child: Opacity(
-                    opacity: exam.isLocked ? 0.6 : 1,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: _examColor(context).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                          child: Icon(
-                            Icons.assignment_rounded,
-                            color: _examColor(context),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                exam.title,
-                                style: const TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                '${exam.questionsCount} سؤال'
-                                '${exam.durationMinutes != null ? " • ${exam.durationMinutes} دقيقة" : ""}'
-                                ' • نجاح ${exam.passPercentage}%',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 11,
-                                  color: context.palette.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          exam.isLocked
-                              ? Icons.lock_rounded
-                              : Icons.chevron_left_rounded,
-                          color: context.palette.textTertiary,
-                        ),
-                      ],
-                    ),
+      body: AppBackground(
+        child: exams.isEmpty
+            ? Center(
+                child: Text(
+                  'مفيش امتحانات متاحة بعد',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.palette.textSecondary,
                   ),
-                );
-              },
-            ),
+                ),
+              )
+            : ListView.separated(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                itemCount: exams.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AppSpacing.md),
+                itemBuilder: (context, index) {
+                  final exam = exams[index];
+                  return AppCard(
+                    onTap: exam.isLocked
+                        ? null
+                        : () => context.push('/exams/${exam.id}'),
+                    child: Opacity(
+                      opacity: exam.isLocked ? 0.6 : 1,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: _examColor(
+                                context,
+                              ).withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                            ),
+                            child: Icon(
+                              Icons.assignment_rounded,
+                              color: _examColor(context),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  exam.title,
+                                  style: const TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  '${exam.questionsCount} سؤال'
+                                  '${exam.durationMinutes != null ? " • ${exam.durationMinutes} دقيقة" : ""}'
+                                  ' • نجاح ${exam.passPercentage}%',
+                                  style: TextStyle(
+                                    fontFamily: 'Cairo',
+                                    fontSize: 11,
+                                    color: context.palette.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            exam.isLocked
+                                ? Icons.lock_rounded
+                                : Icons.chevron_left_rounded,
+                            color: context.palette.textTertiary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
     );
   }
 }

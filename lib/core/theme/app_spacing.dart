@@ -62,7 +62,7 @@ class AppMotion {
   AppMotion._();
 
   /// Press feedback (button/card scale).
-  static const Duration press = Duration(milliseconds: 110);
+  static const Duration press = Duration(milliseconds: 120);
 
   /// Small state changes (selection, toggles, nav indicator).
   static const Duration short = Duration(milliseconds: 220);
@@ -71,7 +71,7 @@ class AppMotion {
   static const Duration medium = Duration(milliseconds: 300);
 
   /// Delay between consecutive items of a staggered list.
-  static const Duration stagger = Duration(milliseconds: 45);
+  static const Duration stagger = Duration(milliseconds: 50);
 
   static const Curve standard = Curves.easeOutCubic;
   static const Curve emphasized = Curves.easeOutBack;

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:itaaleem/core/widgets/auth_shell.dart';
 import 'package:itaaleem/features/onboarding/presentation/providers/onboarding_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -79,63 +80,71 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final isLast = _page == _pages.length - 1;
 
     return Scaffold(
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                const SizedBox(height: AppSpacing.xxxl),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _pageController,
-                    itemCount: _pages.length,
-                    onPageChanged: (index) => setState(() => _page = index),
-                    itemBuilder: (context, index) =>
-                        _OnboardingPage(data: _pages[index]),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: AppBackground(
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  const SizedBox(height: AppSpacing.xxxl),
+                  Expanded(
+                    child: PageView.builder(
+                      controller: _pageController,
+                      itemCount: _pages.length,
+                      onPageChanged: (index) => setState(() => _page = index),
+                      itemBuilder: (context, index) =>
+                          _OnboardingPage(data: _pages[index]),
+                    ),
                   ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(_pages.length, (index) {
-                    final active = index == _page;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeOutCubic,
-                      margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
-                      width: active ? 24 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: active
-                            ? context.palette.primary
-                            : context.palette.primaryBorder,
-                        borderRadius: BorderRadius.circular(AppRadius.xs),
-                      ),
-                    );
-                  }),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
-                  child: AuthGradientButton(
-                    isLast ? 'ابدأ الآن' : 'التالي',
-                    onPressed: isLast ? (_finishing ? null : _finish) : _next,
-                    loading: isLast && _finishing,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(_pages.length, (index) {
+                      final active = index == _page;
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeOutCubic,
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.xs,
+                        ),
+                        width: active ? 24 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: active ? null : context.palette.primaryBorder,
+                          gradient: active
+                              ? DesignTokens.brandGradient(
+                                  Theme.of(context).colorScheme,
+                                )
+                              : null,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                      );
+                    }),
                   ),
-                ),
-              ],
-            ),
-            if (!isLast)
-              PositionedDirectional(
-                top: 4,
-                start: 8,
-                child: TextButton(
-                  onPressed: _finishing ? null : _finish,
-                  style: TextButton.styleFrom(
-                    foregroundColor: context.palette.textTertiary,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+                    child: AuthGradientButton(
+                      isLast ? 'ابدأ الآن' : 'التالي',
+                      onPressed: isLast ? (_finishing ? null : _finish) : _next,
+                      loading: isLast && _finishing,
+                    ),
                   ),
-                  child: const Text('تخطي'),
-                ),
+                ],
               ),
-          ],
+              if (!isLast)
+                PositionedDirectional(
+                  top: 4,
+                  start: 8,
+                  child: TextButton(
+                    onPressed: _finishing ? null : _finish,
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.palette.textTertiary,
+                    ),
+                    child: const Text('تخطي'),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -160,24 +169,29 @@ class _OnboardingPage extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: AppSpacing.sm),
-                Text(
-                  data.title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                Reveal(
+                  child: Text(
+                    data.title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 const SizedBox(height: AppSpacing.md),
-                Text(
-                  data.description,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 14,
-                    color: context.palette.textSecondary,
-                    height: 1.6,
+                Reveal(
+                  index: 1,
+                  child: Text(
+                    data.description,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 14,
+                      color: context.palette.textSecondary,
+                      height: 1.6,
+                    ),
                   ),
                 ),
               ],
@@ -226,11 +240,21 @@ class _Illustration extends StatelessWidget {
                 DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: palette.surface.withValues(alpha: 0.7),
+                    gradient: DesignTokens.brandGradient(
+                      Theme.of(context).colorScheme,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: palette.primary.withValues(alpha: 0.35),
+                        blurRadius: 40,
+                        spreadRadius: -8,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
                   ),
-                  child: SizedBox.square(dimension: size * 0.58),
+                  child: SizedBox.square(dimension: size * 0.5),
                 ),
-                Icon(icon, size: 80, color: palette.primary),
+                Icon(icon, size: 80, color: palette.onPrimary),
               ],
             ),
           ),

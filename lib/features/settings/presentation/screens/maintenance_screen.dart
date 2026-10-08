@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
+
 /// Shown in place of every screen except the login screen while
 /// `maintenance_mode` is true in `GET /public/settings`.
 class MaintenanceScreen extends ConsumerWidget {
@@ -46,8 +47,10 @@ class MaintenanceScreen extends ConsumerWidget {
                   Text(
                     'التطبيق تحت الصيانة حالياً',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall
-                        ?.copyWith(color: context.palette.onPrimary, fontWeight: FontWeight.w800),
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: context.palette.onPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
@@ -62,10 +65,15 @@ class MaintenanceScreen extends ConsumerWidget {
                   const SizedBox(height: 36),
                   OutlinedButton.icon(
                     onPressed: () => ref.invalidate(appSettingsProvider),
-                    icon: Icon(Icons.refresh_rounded, color: context.palette.onPrimary),
+                    icon: Icon(
+                      Icons.refresh_rounded,
+                      color: context.palette.onPrimary,
+                    ),
                     label: Text(
                       'إعادة المحاولة',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.onPrimary),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: context.palette.onPrimary,
+                      ),
                     ),
                     style: OutlinedButton.styleFrom(
                       side: BorderSide(color: context.palette.onPrimary),
@@ -76,7 +84,9 @@ class MaintenanceScreen extends ConsumerWidget {
                     onPressed: () => context.go(loginPath),
                     child: Text(
                       'تسجيل الدخول',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.onPrimary.withValues(alpha: 0.7)),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: context.palette.onPrimary.withValues(alpha: 0.7),
+                      ),
                     ),
                   ),
                 ],

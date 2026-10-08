@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
@@ -42,14 +43,10 @@ class AdminStatCard extends StatelessWidget {
     return Semantics(
       label: '$label: ${value ?? 'غير متاح'}',
       button: onTap != null,
-      child: Card(
-        elevation: 1,
-        margin: EdgeInsets.zero,
-        color: scheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-        ),
-        clipBehavior: Clip.antiAlias,
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        radius: AppRadius.xl,
+        onTap: onTap,
         child: InkWell(
           onTap: onTap,
           child: Padding(
@@ -57,11 +54,15 @@ class AdminStatCard extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: bg,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    gradient: LinearGradient(
+                      begin: AlignmentDirectional.topStart,
+                      end: AlignmentDirectional.bottomEnd,
+                      colors: [bg, bg.withValues(alpha: 0.6)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(icon, color: fg, size: 22),
                 ),
@@ -74,12 +75,20 @@ class AdminStatCard extends StatelessWidget {
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: AlignmentDirectional.centerStart,
-                        child: Text(
-                          value == null ? '—' : _format(value!),
-                          style: text.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
+                        child:
+                            value != null && value! % 1 == 0 && value! < 10000
+                            ? CountUpText(
+                                value: value!,
+                                style: text.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              )
+                            : Text(
+                                value == null ? '—' : _format(value!),
+                                style: text.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                       ),
                       Text(
                         label,

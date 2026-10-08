@@ -1,5 +1,6 @@
 import 'package:itaaleem/features/onboarding/presentation/providers/permissions_onboarding_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
@@ -56,96 +57,100 @@ class _PermissionsOnboardingScreenState
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(24, 28, 24, 8),
-              child: Column(
-                children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      gradient: context.palette.brandGradient,
-                      shape: BoxShape.circle,
+      body: AppBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(24, 28, 24, 8),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        gradient: context.palette.brandGradient,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.shield_moon_rounded,
+                        color: context.palette.onPrimary,
+                        size: 34,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.shield_moon_rounded,
-                      color: context.palette.onPrimary,
-                      size: 34,
+                    const SizedBox(height: AppSpacing.base),
+                    Text(
+                      'قبل ما نبدأ',
+                      style: textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.base),
-                  Text(
-                    'قبل ما نبدأ',
-                    style: textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
+                    const SizedBox(height: 6),
+                    Text(
+                      'نحتاج بعض الأذونات عشان التطبيق يشتغل بأفضل شكل ليك',
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'نحتاج بعض الأذونات عشان التطبيق يشتغل بأفضل شكل ليك',
-                    textAlign: TextAlign.center,
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsetsDirectional.all(AppSpacing.screenHorizontal),
-                children: [
-                  _PermissionTile(
-                    icon: Icons.notifications_active_rounded,
-                    title: 'الإشعارات',
-                    description:
-                        'عشان توصلك إشعارات المحاضرات والامتحانات الجديدة أول بأول',
-                    choice: _choices[Permission.notification]!,
-                    onAllow: () => _allow(Permission.notification),
-                    onDeny: () => _deny(Permission.notification),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 20),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  onPressed: _continuing ? null : _continue,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: context.palette.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.button),
-                    ),
-                  ),
-                  child: _continuing
-                      ? SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation(
-                              context.palette.onPrimary,
-                            ),
-                          ),
-                        )
-                      : Text(
-                          'متابعة',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: context.palette.onPrimary,
-                          ),
-                        ),
+                  ],
                 ),
               ),
-            ),
-          ],
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsetsDirectional.all(
+                    AppSpacing.screenHorizontal,
+                  ),
+                  children: [
+                    _PermissionTile(
+                      icon: Icons.notifications_active_rounded,
+                      title: 'الإشعارات',
+                      description:
+                          'عشان توصلك إشعارات المحاضرات والامتحانات الجديدة أول بأول',
+                      choice: _choices[Permission.notification]!,
+                      onAllow: () => _allow(Permission.notification),
+                      onDeny: () => _deny(Permission.notification),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _continuing ? null : _continue,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: context.palette.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.button),
+                      ),
+                    ),
+                    child: _continuing
+                        ? SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation(
+                                context.palette.onPrimary,
+                              ),
+                            ),
+                          )
+                        : Text(
+                            'متابعة',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: context.palette.onPrimary,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

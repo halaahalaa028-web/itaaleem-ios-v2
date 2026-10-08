@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 
@@ -21,15 +22,10 @@ class AdminMenuItem extends StatelessWidget {
     return Semantics(
       button: true,
       label: label,
-      child: Card(
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        color: scheme.surfaceContainerLow,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: BorderSide(color: scheme.outlineVariant),
-        ),
-        clipBehavior: Clip.antiAlias,
+      child: GlassCard(
+        padding: EdgeInsets.zero,
+        radius: AppRadius.xl,
+        onTap: onTap,
         child: InkWell(
           onTap: onTap,
           child: Padding(
@@ -39,21 +35,33 @@ class AdminMenuItem extends StatelessWidget {
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                CircleAvatar(
-                  radius: 22,
-                  backgroundColor: scheme.primaryContainer,
-                  child: Icon(icon, color: scheme.onPrimaryContainer),
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: DesignTokens.brandGradient(scheme),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: scheme.onPrimary, size: 22),
                 ),
                 const SizedBox(height: AppSpacing.sm),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                // Long labels ("أكواد التفعيل") shrink instead of
+                // overflowing the fixed grid cell; the icon keeps its size.
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),

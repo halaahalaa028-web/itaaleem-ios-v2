@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -21,91 +22,94 @@ class CenterStatsScreen extends ConsumerWidget {
     final async = ref.watch(centerAdminRecordProvider(_path));
     return Scaffold(
       appBar: AppBar(title: const Text('الإحصائيات')),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(centerAdminRecordProvider(_path).future),
-        child: async.when(
-          loading: () => const ShimmerList(count: 6),
-          error: (e, _) => ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            children: [
-              const SizedBox(height: 80),
-              AppErrorState(
-                message: failureOf(e).message,
-                onRetry: () => ref.invalidate(centerAdminRecordProvider(_path)),
-              ),
-            ],
-          ),
-          data: (stats) {
-            final activity = [
-              ...stats.list('daily_activity'),
-              ...stats.list('activity'),
-              ...stats.list('students_activity'),
-            ];
-            final top = [
-              ...stats.list('top_videos'),
-              ...stats.list('most_watched'),
-            ];
-            final least = [
-              ...stats.list('least_videos'),
-              ...stats.list('least_watched'),
-            ];
-            final exams = [
-              ...stats.list('exam_averages'),
-              ...stats.list('exams_performance'),
-            ];
-            return ListView(
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(centerAdminRecordProvider(_path).future),
+          child: async.when(
+            loading: () => const ShimmerList(count: 6),
+            error: (e, _) => ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
-                const AdminSectionTitle('نشاط الطلاب — آخر 7 أيام'),
-                _Panel(
-                  child: activity.isEmpty
-                      ? const _NoData()
-                      : _BarChart(
-                          bars: [
-                            for (final d in activity.take(7))
-                              (
-                                _dayLabel(d),
-                                d.number([
-                                      'active_students',
-                                      'count',
-                                      'value',
-                                      'students',
-                                    ]) ??
-                                    0,
-                              ),
-                          ],
-                        ),
+                const SizedBox(height: 80),
+                AppErrorState(
+                  message: failureOf(e).message,
+                  onRetry: () =>
+                      ref.invalidate(centerAdminRecordProvider(_path)),
                 ),
-                const AdminSectionTitle('أداء الامتحانات — متوسط كل مادة'),
-                _Panel(
-                  child: exams.isEmpty
-                      ? const _NoData()
-                      : Column(
-                          children: [
-                            for (final e in exams)
-                              _MeterRow(
-                                label: e.nestedName('subject') ?? e.title,
-                                value:
-                                    e.number([
-                                      'average',
-                                      'average_score',
-                                      'avg',
-                                    ]) ??
-                                    0,
-                                suffix: '%',
-                                max: 100,
-                              ),
-                          ],
-                        ),
-                ),
-                const AdminSectionTitle('الأكثر مشاهدة'),
-                _VideosPanel(videos: top.take(10).toList()),
-                const AdminSectionTitle('الأقل مشاهدة'),
-                _VideosPanel(videos: least.take(10).toList()),
               ],
-            );
-          },
+            ),
+            data: (stats) {
+              final activity = [
+                ...stats.list('daily_activity'),
+                ...stats.list('activity'),
+                ...stats.list('students_activity'),
+              ];
+              final top = [
+                ...stats.list('top_videos'),
+                ...stats.list('most_watched'),
+              ];
+              final least = [
+                ...stats.list('least_videos'),
+                ...stats.list('least_watched'),
+              ];
+              final exams = [
+                ...stats.list('exam_averages'),
+                ...stats.list('exams_performance'),
+              ];
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                children: [
+                  const AdminSectionTitle('نشاط الطلاب — آخر 7 أيام'),
+                  _Panel(
+                    child: activity.isEmpty
+                        ? const _NoData()
+                        : _BarChart(
+                            bars: [
+                              for (final d in activity.take(7))
+                                (
+                                  _dayLabel(d),
+                                  d.number([
+                                        'active_students',
+                                        'count',
+                                        'value',
+                                        'students',
+                                      ]) ??
+                                      0,
+                                ),
+                            ],
+                          ),
+                  ),
+                  const AdminSectionTitle('أداء الامتحانات — متوسط كل مادة'),
+                  _Panel(
+                    child: exams.isEmpty
+                        ? const _NoData()
+                        : Column(
+                            children: [
+                              for (final e in exams)
+                                _MeterRow(
+                                  label: e.nestedName('subject') ?? e.title,
+                                  value:
+                                      e.number([
+                                        'average',
+                                        'average_score',
+                                        'avg',
+                                      ]) ??
+                                      0,
+                                  suffix: '%',
+                                  max: 100,
+                                ),
+                            ],
+                          ),
+                  ),
+                  const AdminSectionTitle('الأكثر مشاهدة'),
+                  _VideosPanel(videos: top.take(10).toList()),
+                  const AdminSectionTitle('الأقل مشاهدة'),
+                  _VideosPanel(videos: least.take(10).toList()),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/features/center_admin/data/center_admin_models.dart';
@@ -102,48 +103,50 @@ class CenterBannersScreen extends ConsumerWidget {
         icon: const Icon(Icons.add_photo_alternate_rounded),
         label: const Text('بنر جديد'),
       ),
-      body: AdminDataTable(
-        path: 'banners',
-        emptyTitle: 'لا توجد بنرات',
-        emptyIcon: Icons.view_carousel_outlined,
-        bottomPadding: 96,
-        itemBuilder: (context, r) => AdminRecordCard(
-          title: r.text(['title']) ?? r.title,
-          leading: ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.sm),
-            child: Container(
-              width: 72,
-              height: 44,
-              color: scheme.surfaceContainerHighest,
-              child: r.image == null
-                  ? Icon(Icons.image_rounded, color: scheme.onSurfaceVariant)
-                  : Image.network(
-                      r.image!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Icon(
-                        Icons.broken_image_rounded,
-                        color: scheme.onSurfaceVariant,
+      body: AppBackground(
+        child: AdminDataTable(
+          path: 'banners',
+          emptyTitle: 'لا توجد بنرات',
+          emptyIcon: Icons.view_carousel_outlined,
+          bottomPadding: 96,
+          itemBuilder: (context, r) => AdminRecordCard(
+            title: r.text(['title']) ?? r.title,
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.sm),
+              child: Container(
+                width: 72,
+                height: 44,
+                color: scheme.surfaceContainerHighest,
+                child: r.image == null
+                    ? Icon(Icons.image_rounded, color: scheme.onSurfaceVariant)
+                    : Image.network(
+                        r.image!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Icon(
+                          Icons.broken_image_rounded,
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
-                    ),
+              ),
             ),
+            lines: [
+              r.text(['link', 'url', 'target_url']),
+            ],
+            trailing: adminStatusBadge(r.status ?? 'active'),
+            menu: [
+              AdminMenuAction(
+                'تعديل',
+                Icons.edit_rounded,
+                () => _edit(context, ref, banner: r),
+              ),
+              AdminMenuAction(
+                'حذف',
+                Icons.delete_rounded,
+                () => _delete(context, ref, r),
+                destructive: true,
+              ),
+            ],
           ),
-          lines: [
-            r.text(['link', 'url', 'target_url']),
-          ],
-          trailing: adminStatusBadge(r.status ?? 'active'),
-          menu: [
-            AdminMenuAction(
-              'تعديل',
-              Icons.edit_rounded,
-              () => _edit(context, ref, banner: r),
-            ),
-            AdminMenuAction(
-              'حذف',
-              Icons.delete_rounded,
-              () => _delete(context, ref, r),
-              destructive: true,
-            ),
-          ],
         ),
       ),
     );

@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
-import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 
 /// Curved bottom edge for the auth screens' gradient header.
@@ -75,7 +75,6 @@ class _AuthShellState extends State<AuthShell>
   static const _startMs = 150;
   static const _stepMs = 100;
   static const _itemMs = 400;
-  static const _overlap = 28.0;
 
   late final AnimationController _controller;
   bool _started = false;
@@ -138,39 +137,28 @@ class _AuthShellState extends State<AuthShell>
   @override
   Widget build(BuildContext context) {
     final palette = context.palette;
-    final isDark = palette.isDark;
-    final size = MediaQuery.sizeOf(context);
+    final scheme = Theme.of(context).colorScheme;
     final padding = MediaQuery.paddingOf(context);
     final hasBack = widget.onBack != null;
-
-    final topInset = padding.top + (hasBack ? kToolbarHeight : 16);
-    // Cairo's 28px title renders ~53px tall and the subtitle ~28px (more
-    // with large system text) — estimate generously; the header's FittedBox
-    // scales down whatever still doesn't fit instead of overflowing.
-    final textScale = MediaQuery.textScalerOf(context).scale(1);
-    final contentHeight =
-        widget.badgeSize + 12 + (54 + 30) * math.max(1.0, textScale) + 4;
-    final headerHeight = math.max(
-      size.height * widget.headerFactor,
-      topInset + contentHeight + 40,
-    );
-    final sheetMinHeight = size.height - (headerHeight - _overlap);
+    final topInset = padding.top + (hasBack ? kToolbarHeight : 24);
 
     final actionStart = _startMs + _stepMs * widget.fields.length;
     final actionScale = Tween<double>(
-      begin: 0.8,
+      begin: 0.9,
       end: 1,
-    ).animate(_interval(actionStart, _itemMs, Curves.easeOutBack));
+    ).animate(_interval(actionStart, _itemMs, Curves.easeOutCubic));
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: palette.isDark
+          ? SystemUiOverlayStyle.light
+          : SystemUiOverlayStyle.dark,
       child: Scaffold(
+        backgroundColor: scheme.surface,
         extendBodyBehindAppBar: true,
         appBar: hasBack
             ? AppBar(
                 backgroundColor: Colors.transparent,
-                foregroundColor: context.palette.onPrimary,
-                systemOverlayStyle: SystemUiOverlayStyle.light,
+                foregroundColor: scheme.onSurface,
                 leading: IconButton(
                   icon: const BackButtonIcon(),
                   tooltip: MaterialLocalizations.of(context).backButtonTooltip,
@@ -178,60 +166,43 @@ class _AuthShellState extends State<AuthShell>
                 ),
               )
             : null,
-        body: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Stack(
-            children: [
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: headerHeight,
-                child: FadeTransition(
-                  opacity: _interval(0, _headerMs),
-                  child: _Header(
-                    title: widget.title,
-                    subtitle: widget.subtitle,
-                    badgeSize: widget.badgeSize,
-                    topInset: topInset,
-                    isDark: isDark,
+        body: AppBackground(
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsetsDirectional.fromSTEB(
+                20,
+                topInset,
+                20,
+                24 + padding.bottom,
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: math.max(
+                    0,
+                    constraints.maxHeight - topInset - 24 - padding.bottom,
                   ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.only(top: headerHeight - _overlap),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: sheetMinHeight,
-                    minWidth: double.infinity,
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: palette.surface,
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(AppRadius.xxl),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.shadow.withValues(alpha: 0.12),
-                          blurRadius: 24,
-                          offset: const Offset(0, -6),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 440),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FadeTransition(
+                          opacity: _interval(0, _headerMs),
+                          child: _Header(
+                            title: widget.title,
+                            subtitle: widget.subtitle,
+                            badgeSize: widget.badgeSize,
+                          ),
                         ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: EdgeInsetsDirectional.fromSTEB(
-                        24,
-                        32,
-                        24,
-                        24 + padding.bottom,
-                      ),
-                      child: Align(
-                        alignment: Alignment.topCenter,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 420),
+                        const SizedBox(height: AppSpacing.xl),
+                        GlassCard(
+                          blur: true,
+                          radius: DesignTokens.radiusHero,
+                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
@@ -251,22 +222,22 @@ class _AuthShellState extends State<AuthShell>
                                   child: widget.action,
                                 ),
                               ),
-                              if (widget.footer != null) ...[
-                                const SizedBox(height: AppSpacing.xl),
-                                FadeTransition(
-                                  opacity: _interval(actionStart, _itemMs),
-                                  child: widget.footer,
-                                ),
-                              ],
                             ],
                           ),
                         ),
-                      ),
+                        if (widget.footer != null) ...[
+                          const SizedBox(height: AppSpacing.lg),
+                          FadeTransition(
+                            opacity: _interval(actionStart, _itemMs),
+                            child: widget.footer,
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -279,95 +250,66 @@ class _Header extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.badgeSize,
-    required this.topInset,
-    required this.isDark,
   });
 
   final String title;
   final String subtitle;
   final double badgeSize;
-  final double topInset;
-  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    return ClipPath(
-      clipper: const AuthWaveClipper(),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-            colors: isDark
-                ? [
-                    Theme.of(context).colorScheme.primaryContainer,
-                    context.palette.primary,
-                  ]
-                : [
-                    context.palette.primary,
-                    Theme.of(context).colorScheme.secondary,
-                  ],
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Column(
+      children: [
+        // Large app logo on a soft brand halo.
+        Container(
+          width: badgeSize + 16,
+          height: badgeSize + 16,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: DesignTokens.brandGradient(scheme),
+            boxShadow: [
+              BoxShadow(
+                color: scheme.primary.withValues(alpha: 0.35),
+                blurRadius: 32,
+                spreadRadius: -6,
+                offset: const Offset(0, 12),
+              ),
+            ],
           ),
-        ),
-        child: Padding(
-          padding: EdgeInsetsDirectional.only(
-            top: topInset,
-            bottom: 40,
-            start: 24,
-            end: 24,
-          ),
-          child: Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: badgeSize,
-                    height: badgeSize,
-                    decoration: BoxDecoration(
-                      color: context.palette.onPrimary,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.shadow.withValues(alpha: 0.35),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.school_rounded,
-                      size: badgeSize * 0.53,
-                      color: context.palette.primary,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: context.palette.onPrimary,
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: context.palette.onPrimary.withValues(alpha: 0.85),
-                    ),
-                  ),
-                ],
+          child: ClipOval(
+            child: ColoredBox(
+              color: scheme.surface,
+              child: Image.asset(
+                'assets/icon/app_icon.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Icon(
+                  Icons.school_rounded,
+                  size: badgeSize * 0.53,
+                  color: scheme.primary,
+                ),
               ),
             ),
           ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.base),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: text.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: scheme.onSurface,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
@@ -387,64 +329,8 @@ class AuthGradientButton extends StatelessWidget {
   final bool loading;
 
   @override
-  Widget build(BuildContext context) {
-    final enabled = onPressed != null && !loading;
-    final primary = context.palette.primary;
-
-    return Opacity(
-      opacity: onPressed == null && !loading ? 0.5 : 1,
-      child: SizedBox(
-        height: 56,
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-                colors: [primary, Theme.of(context).colorScheme.secondary],
-              ),
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              boxShadow: enabled
-                  ? [
-                      BoxShadow(
-                        color: primary.withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              onTap: enabled ? onPressed : null,
-              child: Center(
-                child: loading
-                    ? SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: context.palette.onPrimary,
-                        ),
-                      )
-                    : Text(
-                        text,
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: context.palette.onPrimary,
-                        ),
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      GradientButton(label: text, onPressed: onPressed, loading: loading);
 }
 
 /// Divider plus a "prompt  link" row, e.g. "مفيش حساب؟ سجل حساب جديد".

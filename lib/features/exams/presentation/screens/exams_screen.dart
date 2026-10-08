@@ -11,6 +11,7 @@ import 'package:itaaleem/features/exams/presentation/providers/exams_providers.d
 import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/app/router/route_args.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/fade_slide_in.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -219,9 +220,11 @@ class ExamsScreen extends ConsumerWidget {
           ),
         ),
       ),
-      body: isDemo
-          ? const _DemoExamsList()
-          : _RealExamsList(subjectId: subjectId),
+      body: AppBackground(
+        child: isDemo
+            ? const _DemoExamsList()
+            : _RealExamsList(subjectId: subjectId),
+      ),
     );
   }
 }

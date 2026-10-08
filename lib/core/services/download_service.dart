@@ -52,7 +52,8 @@ class DownloadService {
       await file.writeAsBytes(bytes);
       return file.path;
     } catch (e) {
-      if (kDebugMode) debugPrint('[DownloadService] saveToDownloads failed: $e');
+      if (kDebugMode)
+        debugPrint('[DownloadService] saveToDownloads failed: $e');
       return null;
     }
   }

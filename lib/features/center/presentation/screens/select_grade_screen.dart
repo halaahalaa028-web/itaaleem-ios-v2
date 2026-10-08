@@ -9,6 +9,7 @@ import 'package:itaaleem/features/center/presentation/providers/center_providers
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -155,56 +156,60 @@ class _SelectGradeScreenState extends ConsumerState<SelectGradeScreen> {
             fetchError.response?.statusCode == 403;
         return Scaffold(
           appBar: AppBar(title: const Text('اختار الكورس')),
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isForbidden
-                        ? Icons.lock_outline_rounded
-                        : Icons.wifi_off_rounded,
-                    size: 40,
-                    color: Theme.of(context).colorScheme.error,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    isForbidden
-                        ? 'مش متاح عرض فرق السنتر ده قبل الانضمام'
-                        : 'تعذر تحميل بيانات السنتر',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+          body: AppBackground(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isForbidden
+                          ? Icons.lock_outline_rounded
+                          : Icons.wifi_off_rounded,
+                      size: 40,
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                  ),
-                  if (isForbidden) ...[
-                    const SizedBox(height: 6),
+                    const SizedBox(height: AppSpacing.md),
                     Text(
-                      'تواصل مع السنتر لمعرفة الكورس الصحيح، أو جرب لاحقاً',
+                      isForbidden
+                          ? 'مش متاح عرض فرق السنتر ده قبل الانضمام'
+                          : 'تعذر تحميل بيانات السنتر',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontFamily: 'Cairo',
-                        fontSize: 13,
-                        color: context.palette.textSecondary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
+                    if (isForbidden) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'تواصل مع السنتر لمعرفة الكورس الصحيح، أو جرب لاحقاً',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 13,
+                          color: context.palette.textSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.base),
+                    AppButton.primary(
+                      'إعادة المحاولة',
+                      onPressed: () => retryCenterFetch(ref, widget.centerId),
+                    ),
                   ],
-                  const SizedBox(height: AppSpacing.base),
-                  AppButton.primary(
-                    'إعادة المحاولة',
-                    onPressed: () => retryCenterFetch(ref, widget.centerId),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
         );
       }
       return const Scaffold(
-        body: SafeArea(child: ShimmerDetail(heroHeight: 140, cards: 4)),
+        body: AppBackground(
+          child: SafeArea(child: ShimmerDetail(heroHeight: 140, cards: 4)),
+        ),
       );
     }
 
@@ -213,55 +218,62 @@ class _SelectGradeScreenState extends ConsumerState<SelectGradeScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('اختار الكورس')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text.rich(
-                TextSpan(
-                  style: const TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  children: [
-                    const TextSpan(text: 'أنت بتنضم لـ '),
-                    TextSpan(
-                      text: center.name,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.primary),
+      body: AppBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text.rich(
+                  TextSpan(
+                    style: const TextStyle(
+                      fontFamily: 'Cairo',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                     ),
-                  ],
+                    children: [
+                      const TextSpan(text: 'أنت بتنضم لـ '),
+                      TextSpan(
+                        text: center.name,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: context.palette.primary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'اختار الكورس والقسم',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.textSecondary),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: grades.length,
-                  itemBuilder: (context, index) {
-                    final grade = grades[index];
-                    return _GradeTile(
-                      grade: grade,
-                      selected: grade.id == _selectedGradeId,
-                      onTap: () => setState(() => _selectedGradeId = grade.id),
-                    );
-                  },
+                const SizedBox(height: 6),
+                Text(
+                  'اختار الكورس والقسم',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.palette.textSecondary,
+                  ),
                 ),
-              ),
-              AppButton.primary(
-                'تأكيد الانضمام',
-                onPressed: (_selectedGradeId == null || _confirming)
-                    ? null
-                    : _confirm,
-                loading: _confirming,
-              ),
-            ],
+                const SizedBox(height: AppSpacing.xl),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: grades.length,
+                    itemBuilder: (context, index) {
+                      final grade = grades[index];
+                      return _GradeTile(
+                        grade: grade,
+                        selected: grade.id == _selectedGradeId,
+                        onTap: () =>
+                            setState(() => _selectedGradeId = grade.id),
+                      );
+                    },
+                  ),
+                ),
+                AppButton.primary(
+                  'تأكيد الانضمام',
+                  onPressed: (_selectedGradeId == null || _confirming)
+                      ? null
+                      : _confirm,
+                  loading: _confirming,
+                ),
+              ],
+            ),
           ),
         ),
       ),

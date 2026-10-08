@@ -62,7 +62,8 @@ class NotificationHistoryService {
 
   Future<void> remove(String id) async {
     final prefs = await SharedPreferences.getInstance();
-    final all = await _readAll(prefs)..removeWhere((r) => r.id == id);
+    final all = await _readAll(prefs)
+      ..removeWhere((r) => r.id == id);
     await prefs.setString(
       _historyKey,
       jsonEncode(all.map((r) => r.toJson()).toList()),
@@ -82,7 +83,9 @@ class NotificationHistoryService {
     try {
       final decoded = jsonDecode(raw) as List<dynamic>;
       return decoded
-          .map((e) => PushNotificationRecord.fromJson(e as Map<String, dynamic>))
+          .map(
+            (e) => PushNotificationRecord.fromJson(e as Map<String, dynamic>),
+          )
           .toList();
     } catch (_) {
       return [];
@@ -96,6 +99,7 @@ final notificationHistoryServiceProvider = Provider<NotificationHistoryService>(
 
 /// The full locally-stored push history, newest first — watched by
 /// [NotificationsScreen] and invalidated whenever a new push is saved.
-final notificationHistoryProvider = FutureProvider<List<PushNotificationRecord>>(
-  (ref) => ref.watch(notificationHistoryServiceProvider).getAll(),
-);
+final notificationHistoryProvider =
+    FutureProvider<List<PushNotificationRecord>>(
+      (ref) => ref.watch(notificationHistoryServiceProvider).getAll(),
+    );

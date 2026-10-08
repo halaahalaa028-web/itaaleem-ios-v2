@@ -12,7 +12,9 @@ import 'package:itaaleem/features/center/domain/entities/center_model.dart';
 import 'package:itaaleem/features/center/presentation/screens/center_profile_screen.dart';
 import 'package:itaaleem/features/center/presentation/utils/center_color.dart';
 import 'package:dio/dio.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
@@ -28,7 +30,7 @@ class CenterSearchScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('ابحث عن سنترك')),
-      body: const SafeArea(child: CenterSearchBody()),
+      body: const AppBackground(child: SafeArea(child: CenterSearchBody())),
     );
   }
 }
@@ -119,17 +121,29 @@ class _CenterSearchBodyState extends ConsumerState<CenterSearchBody> {
       child: Column(
         children: [
           const SizedBox(height: AppSpacing.xl),
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: context.palette.primary.withValues(alpha: 0.08),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.vpn_key_rounded,
-              size: 40,
-              color: context.palette.primary,
+          Reveal(
+            child: Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                gradient: DesignTokens.brandGradient(
+                  Theme.of(context).colorScheme,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: context.palette.primary.withValues(alpha: 0.35),
+                    blurRadius: 32,
+                    spreadRadius: -6,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.vpn_key_rounded,
+                size: 44,
+                color: context.palette.onPrimary,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -146,33 +160,49 @@ class _CenterSearchBodyState extends ConsumerState<CenterSearchBody> {
           Text(
             'ادخل الكود اللي المدرس أو السنتر اداهولك',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.textSecondary),
-          ),
-          const SizedBox(height: AppSpacing.xxl),
-          AppInput(
-            controller: _codeController,
-            label: 'كود السنتر',
-            hint: 'مثال: AX-204',
-            prefixIcon: Icons.vpn_key_rounded,
-            textCapitalization: TextCapitalization.characters,
-            textAlign: TextAlign.center,
-            textInputAction: TextInputAction.search,
-            onSubmitted: (_) => _searchByCode(),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: context.palette.textSecondary,
             ),
           ),
-          const SizedBox(height: AppSpacing.base),
-          AppButton.primary(
-            'بحث عن السنتر',
-            loading: _searching,
-            onPressed: _searching ? null : _searchByCode,
+          const SizedBox(height: AppSpacing.xl),
+          Reveal(
+            index: 2,
+            child: GlassCard(
+              radius: DesignTokens.radiusHero,
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: Column(
+                children: [
+                  AppInput(
+                    controller: _codeController,
+                    label: 'كود السنتر',
+                    hint: 'مثال: AX-204',
+                    prefixIcon: Icons.vpn_key_rounded,
+                    textCapitalization: TextCapitalization.characters,
+                    textAlign: TextAlign.center,
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _searchByCode(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.base),
+                  AppButton.primary(
+                    'بحث عن السنتر',
+                    loading: _searching,
+                    onPressed: _searching ? null : _searchByCode,
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
           if (_foundCenter != null)
-            _CenterResultCard(center: _foundCenter!)
+            Reveal(
+              key: ValueKey(_foundCenter!.id),
+              child: _CenterResultCard(center: _foundCenter!),
+            )
           else if (_notFound)
             const _CenterNotFoundCard()
           else if (_errorMessage != null)
@@ -193,21 +223,43 @@ class _CenterResultCard extends StatelessWidget {
     final color = parseCenterColor(center.primaryColor);
 
     return AppCard(
+      elevated: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: color,
-                child: Text(
-                  center.initial,
-                  style: TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: context.palette.onPrimary,
+              Hero(
+                tag: 'center-logo-${center.id}',
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  padding: const EdgeInsets.all(2.5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: DesignTokens.brandGradient(
+                      Theme.of(context).colorScheme,
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    backgroundColor: color,
+                    foregroundImage:
+                        (center.logo == null || center.logo!.isEmpty)
+                        ? null
+                        : CachedNetworkImageProvider(center.logo!),
+                    onForegroundImageError:
+                        (center.logo == null || center.logo!.isEmpty)
+                        ? null
+                        : (_, _) {},
+                    child: Text(
+                      center.initial,
+                      style: TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: context.palette.onPrimary,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -225,10 +277,7 @@ class _CenterResultCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      'كود: ${center.code}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.palette.textSecondary),
-                    ),
+                    StatusPill(label: center.code, dense: true),
                     const SizedBox(height: AppSpacing.xs),
                     Row(
                       children: [
@@ -256,7 +305,8 @@ class _CenterResultCard extends StatelessWidget {
                         const SizedBox(width: 2),
                         Text(
                           '${center.studentsCount} طالب',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.palette.textTertiary),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: context.palette.textTertiary),
                         ),
                       ],
                     ),
@@ -283,7 +333,7 @@ class _CenterNotFoundCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: context.palette.error.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.md + 2),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
       child: Column(
         children: [
@@ -305,7 +355,9 @@ class _CenterNotFoundCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xs),
           Text(
             'تأكد من الكود وجرب تاني',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: context.palette.textSecondary),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: context.palette.textSecondary,
+            ),
           ),
         ],
       ),
@@ -325,7 +377,7 @@ class _CenterErrorCard extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: context.palette.error.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(AppRadius.md + 2),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
       ),
       child: Column(
         children: [

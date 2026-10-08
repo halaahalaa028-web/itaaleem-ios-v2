@@ -44,9 +44,7 @@ class HomeSubject {
 final homeSubjectsProvider = FutureProvider<List<HomeSubject>>((ref) async {
   final courses = await ref.watch(coursesProvider.future);
   final detailsList = await Future.wait(
-    courses.map(
-      (course) => ref.watch(courseDetailsProvider(course.id).future),
-    ),
+    courses.map((course) => ref.watch(courseDetailsProvider(course.id).future)),
   );
 
   final subjects = <HomeSubject>[];

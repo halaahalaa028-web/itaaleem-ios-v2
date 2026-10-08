@@ -152,6 +152,45 @@ class CenterAdminRepository {
 
   Future<void> remove(String path) => _guard(() => _api.delete(path));
 
+  // --- Student subscriptions ---------------------------------------------
+
+  /// `GET students/{id}/subscriptions` — every subscription of the student
+  /// (active and cancelled, both kinds — each has `kind`).
+  Future<List<AdminRecord>> studentSubscriptions(int studentId) =>
+      _guard(() async {
+        final body = await _api.get('students/$studentId/subscriptions');
+        return [
+          for (final e in extractAdminList(body))
+            if (e is Map) AdminRecord(Map<String, dynamic>.from(e)),
+        ];
+      });
+
+  /// `POST students/{id}/subscriptions/cancel-all {reason?}` — cancels both
+  /// subscription kinds in the admin's center. Resolves to the server's
+  /// message ("تم إلغاء 3 اشتراك"). 422 → "لا توجد اشتراكات نشطة…" and a
+  /// student of another center (404) surface the server's own text.
+  Future<String> cancelAllSubscriptions(int studentId, {String? reason}) async {
+    try {
+      final body = await _api.post(
+        'students/$studentId/subscriptions/cancel-all',
+        {
+          if (reason != null && reason.trim().isNotEmpty)
+            'reason': reason.trim(),
+        },
+      );
+      return _serverMessage(body) ?? 'تم إلغاء كل اشتراكات الطالب';
+    } on DioException catch (e) {
+      final message = _serverMessage(e.response?.data);
+      if (e.response?.statusCode == 404) {
+        throw ServerFailure(
+          message ?? 'الطالب غير موجود في السنتر',
+          statusCode: 404,
+        );
+      }
+      throw _failureOf(e);
+    }
+  }
+
   // --- Subscription requests ---------------------------------------------
 
   /// Pending subscription requests (`GET subscriptions?status=pending`) —

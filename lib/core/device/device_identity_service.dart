@@ -70,7 +70,8 @@ class DeviceIdentityService {
     if (Platform.isAndroid) {
       try {
         final androidId = await _channel.invokeMethod<String>('androidId');
-        if (androidId != null && androidId.isNotEmpty) return 'android-$androidId';
+        if (androidId != null && androidId.isNotEmpty)
+          return 'android-$androidId';
       } catch (_) {
         // Fall back to the persisted UUID below.
       }

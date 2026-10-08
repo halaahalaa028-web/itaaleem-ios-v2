@@ -65,10 +65,13 @@ flutter build ipa --release --obfuscate --split-debug-info=build/debug-info
 - **Bundle ID**: com.itaaleem.app
 - **اللغة**: العربية
 - **Deployment Target**: iOS 15.0 (مطلوب لـ Firebase — ما تنزّلوش)
-- **الإصدار**: 3.0.0 (Build 37)
+- **الإصدار**: 3.0.1 (Build 38)
 
-  رقم الـ Build بييجي من `pubspec.yaml` (`version: 3.0.0+37`) — مشترك مع
-  Android اللي استخدم لحد 36، فمش ممكن يبقى 1. App Store بيقبل 37 كأول build.
+  رقم الـ Build بييجي من `pubspec.yaml` (`version: 3.0.1+38`) — مشترك مع
+  Android، فمش ممكن يبقى 1.
+
+- **حذف الحساب**: موجود جوا التطبيق (حسابي ← حذف الحساب ← تأكيد) — مطلوب
+  من Apple (Guideline 5.1.1(v)).
 
 ## الصلاحيات المطلوبة (Info.plist)
 - Push Notifications (إشعارات)

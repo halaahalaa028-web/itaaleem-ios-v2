@@ -9,6 +9,7 @@ import 'package:itaaleem/features/chat/presentation/providers/chat_providers.dar
 import 'package:itaaleem/features/chat/presentation/widgets/message_bubble.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
@@ -18,7 +19,10 @@ import 'package:itaaleem/core/theme/app_spacing.dart';
 /// Newest-first dummy conversation seed (paired with `ListView.builder`'s
 /// `reverse: true` below, so index 0 renders at the bottom of the screen)
 /// — stands in for a future `GET /chat/{centerId}` history.
-List<MessageModel> _seedMessages({required int studentId, required int centerId}) {
+List<MessageModel> _seedMessages({
+  required int studentId,
+  required int centerId,
+}) {
   final today = DateTime.now();
   DateTime at(int hour, int minute) =>
       DateTime(today.year, today.month, today.day, hour, minute);
@@ -180,16 +184,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
-  Future<void> _refreshReal() => ref.read(chatControllerProvider.notifier).refresh();
+  Future<void> _refreshReal() =>
+      ref.read(chatControllerProvider.notifier).refresh();
 
   @override
   Widget build(BuildContext context) {
     final (isDemo, studentId) = ref.watch(
       authControllerProvider.select(
-        (state) => (
-          state.valueOrNull?.isDemo ?? false,
-          state.valueOrNull?.id ?? 0,
-        ),
+        (state) =>
+            (state.valueOrNull?.isDemo ?? false, state.valueOrNull?.id ?? 0),
       ),
     );
     final membership = ref.watch(centerMembershipProvider).valueOrNull;
@@ -214,14 +217,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     return messagesAsync.when(
       loading: () => Scaffold(
         appBar: _buildAppBar(centerName, centerInitial),
-        body: const ShimmerList(count: 5, thumbnailSize: 36),
+        body: AppBackground(
+          child: const ShimmerList(count: 5, thumbnailSize: 36),
+        ),
       ),
       error: (error, _) => Scaffold(
         appBar: _buildAppBar(centerName, centerInitial),
-        body: ErrorView(
-          message: failureOf(error).message,
-          retryLabel: 'إعادة المحاولة',
-          onRetry: () => ref.invalidate(chatControllerProvider),
+        body: AppBackground(
+          child: ErrorView(
+            message: failureOf(error).message,
+            retryLabel: 'إعادة المحاولة',
+            onRetry: () => ref.invalidate(chatControllerProvider),
+          ),
         ),
       ),
       data: (messages) {
@@ -301,7 +308,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               Center(
                 child: Text(
                   'ابدأ محادثة مع السنتر',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.textSecondary),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: context.palette.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -309,17 +318,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         : ListView.builder(
             controller: _scrollController,
             reverse: true,
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.md),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.md,
+            ),
             itemCount: messages.length + 1,
             itemBuilder: (context, index) {
               if (index == messages.length) {
                 return const _DateDivider(label: 'اليوم');
               }
               final message = messages[index];
-              final older =
-                  index + 1 < messages.length ? messages[index + 1] : null;
-              final spacing =
-                  (older == null || older.isMine != message.isMine) ? 12.0 : 6.0;
+              final older = index + 1 < messages.length
+                  ? messages[index + 1]
+                  : null;
+              final spacing = (older == null || older.isMine != message.isMine)
+                  ? 12.0
+                  : 6.0;
               return Padding(
                 padding: EdgeInsets.only(top: spacing),
                 child: MessageBubble(message: message),
@@ -329,17 +343,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: _buildAppBar(centerName, centerInitial),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: onRefresh == null
-                  ? list
-                  : RefreshIndicator(onRefresh: onRefresh, child: list),
-            ),
-            _ChatInputBar(controller: _inputController, onSend: onSend),
-          ],
+      body: AppBackground(
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: onRefresh == null
+                    ? list
+                    : RefreshIndicator(onRefresh: onRefresh, child: list),
+              ),
+              _ChatInputBar(controller: _inputController, onSend: onSend),
+            ],
+          ),
         ),
       ),
     );
@@ -357,14 +373,19 @@ class _DateDivider extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Center(
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 5),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: 5,
+          ),
           decoration: BoxDecoration(
             color: context.palette.surfaceVariant,
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
             label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(color: context.palette.textSecondary),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: context.palette.textSecondary,
+            ),
           ),
         ),
       ),
@@ -383,8 +404,16 @@ class _ChatInputBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.sm),
       decoration: BoxDecoration(
-        color: context.palette.surface,
-        border: Border(top: BorderSide(color: context.palette.border, width: 0.5)),
+        color: context.palette.surface.withValues(alpha: 0.92),
+        border: Border(
+          top: BorderSide(
+            color: DesignTokens.cardBorder(Theme.of(context).colorScheme),
+          ),
+        ),
+        boxShadow: DesignTokens.softShadow(
+          Theme.of(context).colorScheme,
+          strength: 0.5,
+        ),
       ),
       child: SafeArea(
         top: false,

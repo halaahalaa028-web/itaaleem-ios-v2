@@ -8,6 +8,7 @@ String centerAdminSubjectPath(int id) => '$centerAdminSubjectsPath/$id';
 const centerAdminTeachersPath = '$centerAdminPath/teachers';
 String centerAdminTeacherPath(int id) => '$centerAdminTeachersPath/$id';
 const centerAdminLecturesPath = '$centerAdminPath/lectures';
+String centerAdminLecturePath(int id) => '$centerAdminLecturesPath/$id';
 const centerAdminExamsPath = '$centerAdminPath/exams';
 String centerAdminExamPath(int id) => '$centerAdminExamsPath/$id';
 const centerAdminAssignmentsPath = '$centerAdminPath/assignments';

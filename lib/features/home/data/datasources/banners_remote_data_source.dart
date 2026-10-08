@@ -11,11 +11,11 @@ class BannersRemoteDataSource {
   final Dio _dio;
 
   Future<List<AppBanner>> getBanners() async {
-    final response = await _dio.get<Map<String, dynamic>>(
-      ApiEndpoints.banners,
-    );
+    final response = await _dio.get<Map<String, dynamic>>(ApiEndpoints.banners);
     if (kDebugMode) {
-      debugPrint('>>> GET ${ApiEndpoints.banners} raw response: ${response.data}');
+      debugPrint(
+        '>>> GET ${ApiEndpoints.banners} raw response: ${response.data}',
+      );
     }
     final data = response.data?['data'];
     final rawList = data is List ? data : const [];

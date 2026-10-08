@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -34,34 +36,74 @@ class AppBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: scheme.surface,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: scheme.outlineVariant.withValues(alpha: 0.5),
+    final count = items.length;
+    // Glass bar: frosted blur over the page + a translucent surface, with a
+    // gradient pill that slides to the active tab.
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: Material(
+          color: scheme.surface.withValues(alpha: 0.78),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
             ),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 72,
-            child: Row(
-              children: [
-                for (var i = 0; i < items.length; i++)
-                  Expanded(
-                    child: _NavItem(
-                      item: items[i],
-                      selected: i == currentIndex,
-                      onTap: () {
-                        if (i != currentIndex) HapticFeedback.selectionClick();
-                        onTap(i);
-                      },
+            child: SafeArea(
+              top: false,
+              child: SizedBox(
+                height: 72,
+                child: Stack(
+                  children: [
+                    // Sliding indicator line at the top edge of the active tab.
+                    AnimatedAlign(
+                      duration: AppMotion.medium,
+                      curve: AppMotion.standard,
+                      alignment: AlignmentDirectional(
+                        count <= 1 ? 0 : -1 + 2 * currentIndex / (count - 1),
+                        -1,
+                      ),
+                      child: FractionallySizedBox(
+                        widthFactor: 1 / count,
+                        child: Center(
+                          child: Container(
+                            width: 28,
+                            height: 3,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [scheme.primary, scheme.secondary],
+                              ),
+                              borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(3),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-              ],
+                    Row(
+                      children: [
+                        for (var i = 0; i < items.length; i++)
+                          Expanded(
+                            child: _NavItem(
+                              item: items[i],
+                              selected: i == currentIndex,
+                              onTap: () {
+                                if (i != currentIndex) {
+                                  HapticFeedback.selectionClick();
+                                }
+                                onTap(i);
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),

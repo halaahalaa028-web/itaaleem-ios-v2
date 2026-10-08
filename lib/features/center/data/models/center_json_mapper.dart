@@ -15,7 +15,9 @@ CenterModel centerModelFromJson(Map<String, dynamic> json) {
     name: json['name'] as String? ?? '',
     code: json['code'] as String? ?? '',
     logo: ApiEndpoints.mediaUrl((json['logo_url'] ?? json['logo']) as String?),
-    cover: ApiEndpoints.mediaUrl((json['cover_url'] ?? json['cover']) as String?),
+    cover: ApiEndpoints.mediaUrl(
+      (json['cover_url'] ?? json['cover']) as String?,
+    ),
     description: json['description'] as String?,
     address: json['address'] as String?,
     primaryColor: (json['primary_color'] as String?)?.trim().isNotEmpty == true
@@ -30,24 +32,15 @@ CenterModel centerModelFromJson(Map<String, dynamic> json) {
 
     socialLinks: rawSocial is Map
         ? rawSocial.map(
-          (key, value) => MapEntry(
-        key.toString(),
-        value?.toString(),
-      ),
-    )
+            (key, value) => MapEntry(key.toString(), value?.toString()),
+          )
         : const {},
 
     // API may return rating as String ("0.00") or num (0.0)
-    rating: double.tryParse(
-      json['rating']?.toString() ?? '',
-    ) ??
-        0.0,
+    rating: double.tryParse(json['rating']?.toString() ?? '') ?? 0.0,
 
     // API may return students_count as int or String
-    studentsCount: int.tryParse(
-      json['students_count']?.toString() ?? '',
-    ) ??
-        0,
+    studentsCount: int.tryParse(json['students_count']?.toString() ?? '') ?? 0,
 
     // The live backend's field name for this has been observed as both
     // `is_active` and `is_activated` — read whichever is present, defaulting
@@ -58,13 +51,9 @@ CenterModel centerModelFromJson(Map<String, dynamic> json) {
 
     grades: rawGrades is List
         ? rawGrades
-        .whereType<Map<String, dynamic>>()
-        .map(
-          (e) => gradeModelFromJson(
-        e,
-      ),
-    )
-        .toList()
+              .whereType<Map<String, dynamic>>()
+              .map((e) => gradeModelFromJson(e))
+              .toList()
         : const [],
   );
 }
@@ -78,9 +67,6 @@ GradeModel gradeModelFromJson(Map<String, dynamic> json) {
   return GradeModel(
     id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
     name: json['name'] as String? ?? '',
-    sortOrder: int.tryParse(
-      json['sort_order']?.toString() ?? '',
-    ) ??
-        0,
+    sortOrder: int.tryParse(json['sort_order']?.toString() ?? '') ?? 0,
   );
 }

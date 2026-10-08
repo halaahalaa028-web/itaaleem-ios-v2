@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
@@ -23,9 +24,8 @@ class CenterRequestApproveScreen extends ConsumerStatefulWidget {
 class _CenterRequestApproveScreenState
     extends ConsumerState<CenterRequestApproveScreen> {
   /// Starts with the subject the student asked for.
-  late final Set<int> _selected = {
-    ?widget.request.nestedId('subject'),
-  }..removeWhere((id) => id <= 0);
+  late final Set<int> _selected = {?widget.request.nestedId('subject')}
+    ..removeWhere((id) => id <= 0);
   int _days = 30;
   bool _submitting = false;
 
@@ -51,9 +51,12 @@ class _CenterRequestApproveScreenState
             durationDays: _days,
           );
       if (!mounted) return;
+      final toastContext = Navigator.of(context, rootNavigator: true).context;
       invalidateAdminSection(ref, 'subscriptions');
-      AppToast.showSuccess(context, 'تم تفعيل الاشتراك');
       Navigator.of(context).pop(true);
+      if (toastContext.mounted) {
+        AppToast.showSuccess(toastContext, 'تم تفعيل الاشتراك');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _submitting = false);
@@ -72,113 +75,114 @@ class _CenterRequestApproveScreenState
 
     return Scaffold(
       appBar: AppBar(title: const Text('تفعيل اشتراك')),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(centerSubjectsListProvider.future),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          children: [
-            Card(
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.base),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        AdminAvatar(
-                          name: name,
-                          imageUrl: student?.image,
-                          radius: 28,
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Text(
-                            name,
-                            style: text.titleMedium?.copyWith(
-                              fontFamily: 'Cairo',
-                              fontWeight: FontWeight.w800,
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(centerSubjectsListProvider.future),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            children: [
+              Card(
+                margin: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.base),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          AdminAvatar(
+                            name: name,
+                            imageUrl: student?.image,
+                            radius: 28,
+                          ),
+                          const SizedBox(width: AppSpacing.md),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: text.titleMedium?.copyWith(
+                                fontFamily: 'Cairo',
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
+                          adminStatusBadge(r.status),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      if ((student?.phone ?? r.phone) case final phone?)
+                        AdminInfoRow(
+                          icon: Icons.phone_rounded,
+                          label: 'الموبايل',
+                          value: phone,
                         ),
-                        adminStatusBadge(r.status),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    if ((student?.phone ?? r.phone) case final phone?)
+                      if (r.nestedName('subject') case final subject?)
+                        AdminInfoRow(
+                          icon: Icons.menu_book_rounded,
+                          label: 'المادة المطلوبة',
+                          value: subject,
+                        ),
                       AdminInfoRow(
-                        icon: Icons.phone_rounded,
-                        label: 'الموبايل',
-                        value: phone,
+                        icon: Icons.event_rounded,
+                        label: 'تاريخ الطلب',
+                        value: adminDate(
+                          r.date(['created_at', 'requested_at']),
+                        ),
                       ),
-                    if (r.nestedName('subject') case final subject?)
-                      AdminInfoRow(
-                        icon: Icons.menu_book_rounded,
-                        label: 'المادة المطلوبة',
-                        value: subject,
-                      ),
-                    AdminInfoRow(
-                      icon: Icons.event_rounded,
-                      label: 'تاريخ الطلب',
-                      value: adminDate(r.date(['created_at', 'requested_at'])),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const AdminSectionTitle('المواد المراد تفعيلها'),
-            subjectsAsync.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.all(AppSpacing.xl),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (e, _) => Text(
-                failureOf(e).message,
-                style: TextStyle(color: scheme.error),
-              ),
-              data: (subjects) => subjects.isEmpty
-                  ? Text(
-                      'لا توجد مواد في السنتر',
-                      style: text.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    )
-                  : Wrap(
-                      spacing: AppSpacing.sm,
-                      runSpacing: AppSpacing.sm,
-                      children: [
-                        for (final s in subjects)
-                          FilterChip(
-                            label: Text(s.title),
-                            selected: _selected.contains(s.id),
-                            onSelected: (on) => setState(
-                              () => on
-                                  ? _selected.add(s.id)
-                                  : _selected.remove(s.id),
+              const AdminSectionTitle('المواد المراد تفعيلها'),
+              subjectsAsync.when(
+                loading: () => const ShimmerBox(height: 48, radius: 999),
+                error: (e, _) => Text(
+                  failureOf(e).message,
+                  style: TextStyle(color: scheme.error),
+                ),
+                data: (subjects) => subjects.isEmpty
+                    ? Text(
+                        'لا توجد مواد في السنتر',
+                        style: text.bodyMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      )
+                    : Wrap(
+                        spacing: AppSpacing.sm,
+                        runSpacing: AppSpacing.sm,
+                        children: [
+                          for (final s in subjects)
+                            FilterChip(
+                              label: Text(s.title),
+                              selected: _selected.contains(s.id),
+                              onSelected: (on) => setState(
+                                () => on
+                                    ? _selected.add(s.id)
+                                    : _selected.remove(s.id),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
+              ),
+              const AdminSectionTitle('مدة الاشتراك'),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                children: [
+                  for (final (days, label) in _durations)
+                    ChoiceChip(
+                      label: Text(label),
+                      selected: _days == days,
+                      onSelected: (_) => setState(() => _days = days),
                     ),
-            ),
-            const AdminSectionTitle('مدة الاشتراك'),
-            Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                for (final (days, label) in _durations)
-                  ChoiceChip(
-                    label: Text(label),
-                    selected: _days == days,
-                    onSelected: (_) => setState(() => _days = days),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 96),
-          ],
+                ],
+              ),
+              const SizedBox(height: 96),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: SafeArea(

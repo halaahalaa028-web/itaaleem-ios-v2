@@ -34,9 +34,7 @@ class ForceUpdateScreen extends ConsumerWidget {
       child: Scaffold(
         body: SizedBox.expand(
           child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: context.palette.brandGradient,
-            ),
+            decoration: BoxDecoration(gradient: context.palette.brandGradient),
             child: SafeArea(
               child: LayoutBuilder(
                 builder: (context, constraints) => SingleChildScrollView(

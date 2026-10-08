@@ -12,14 +12,13 @@ class AiRemoteDataSource {
 
   Future<AiAnswerModel> ask(String question, {int? courseId}) async {
     if (kDebugMode) {
-      debugPrint('>>> POST ${ApiEndpoints.aiAsk} question="$question" courseId=$courseId');
+      debugPrint(
+        '>>> POST ${ApiEndpoints.aiAsk} question="$question" courseId=$courseId',
+      );
     }
     final response = await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.aiAsk,
-      data: {
-        'question': question,
-        if (courseId != null) 'course_id': courseId,
-      },
+      data: {'question': question, if (courseId != null) 'course_id': courseId},
     );
     if (kDebugMode) {
       debugPrint('>>> POST ${ApiEndpoints.aiAsk} response: ${response.data}');

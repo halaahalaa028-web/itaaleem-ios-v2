@@ -28,7 +28,10 @@ class MessageBubble extends StatelessWidget {
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.sm,
+          ),
           decoration: BoxDecoration(
             color: isMine ? context.palette.primary : context.palette.surface,
             border: isMine ? null : Border.all(color: context.palette.border),
@@ -45,7 +48,11 @@ class MessageBubble extends StatelessWidget {
             children: [
               Text(
                 message.body,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: isMine ? context.palette.onPrimary : context.palette.textPrimary),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: isMine
+                      ? context.palette.onPrimary
+                      : context.palette.textPrimary,
+                ),
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(

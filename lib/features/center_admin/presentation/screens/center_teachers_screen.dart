@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itaaleem/core/error/failure.dart';
@@ -67,20 +68,22 @@ class CenterTeachersScreen extends ConsumerWidget {
         icon: const Icon(Icons.person_add_rounded),
         label: const Text('دكتور جديد'),
       ),
-      body: AdminDataTable(
-        path: 'teachers',
-        searchHint: 'ابحث باسم الدكتور',
-        emptyTitle: 'لا يوجد دكاترة بعد',
-        emptyIcon: Icons.school_outlined,
-        bottomPadding: 96,
-        itemBuilder: (context, r) => AdminRecordCard(
-          title: 'د. ${r.title}',
-          leading: AdminAvatar(name: r.title, imageUrl: r.image),
-          lines: [
-            r.text(['specialization']),
-            '${r.count(['subjects_count']) ?? r.list('subjects').length} مادة',
-          ],
-          onTap: () => context.push(centerAdminTeacherPath(r.id), extra: r),
+      body: AppBackground(
+        child: AdminDataTable(
+          path: 'teachers',
+          searchHint: 'ابحث باسم الدكتور',
+          emptyTitle: 'لا يوجد دكاترة بعد',
+          emptyIcon: Icons.school_outlined,
+          bottomPadding: 96,
+          itemBuilder: (context, r) => AdminRecordCard(
+            title: 'د. ${r.title}',
+            leading: AdminAvatar(name: r.title, imageUrl: r.image),
+            lines: [
+              r.text(['specialization']),
+              '${r.count(['subjects_count']) ?? r.list('subjects').length} مادة',
+            ],
+            onTap: () => context.push(centerAdminTeacherPath(r.id), extra: r),
+          ),
         ),
       ),
     );
@@ -163,70 +166,73 @@ class CenterTeacherDetailScreen extends ConsumerWidget {
         icon: const Icon(Icons.link_rounded),
         label: const Text('ربط مادة'),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(centerAdminRecordProvider(_path).future),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.lg,
-            AppSpacing.lg,
-            96,
-          ),
-          children: [
-            if (teacher != null) ...[
-              Center(
-                child: AdminAvatar(
-                  name: teacher.title,
-                  imageUrl: teacher.image,
-                  radius: 40,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AdminInfoRow(
-                icon: Icons.phone_rounded,
-                label: 'الهاتف',
-                value: teacher.phone,
-              ),
-              AdminInfoRow(
-                icon: Icons.workspace_premium_rounded,
-                label: 'التخصص',
-                value: teacher.text(['specialization']),
-              ),
-            ],
-            AdminSectionTitle('المواد (${subjects.length})'),
-            if (async.isLoading && async.valueOrNull == null)
-              const ShimmerList(count: 3)
-            else if (async.hasError && async.valueOrNull == null)
-              AppErrorState(
-                message: failureOf(async.error!).message,
-                onRetry: () => ref.invalidate(centerAdminRecordProvider(_path)),
-              )
-            else if (subjects.isEmpty)
-              const Text('لا توجد مواد مربوطة بهذا الدكتور')
-            else
-              for (final s in subjects)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: AdminRecordCard(
-                    title: s.title,
-                    leading: const AdminAvatar(
-                      name: '',
-                      icon: Icons.menu_book_rounded,
-                    ),
-                    onTap: () =>
-                        context.push(centerAdminSubjectPath(s.id), extra: s),
-                    menu: [
-                      AdminMenuAction(
-                        'فك الربط',
-                        Icons.link_off_rounded,
-                        () => _unlink(context, ref, s),
-                        destructive: true,
-                      ),
-                    ],
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(centerAdminRecordProvider(_path).future),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.lg,
+              AppSpacing.lg,
+              AppSpacing.lg,
+              96,
+            ),
+            children: [
+              if (teacher != null) ...[
+                Center(
+                  child: AdminAvatar(
+                    name: teacher.title,
+                    imageUrl: teacher.image,
+                    radius: 40,
                   ),
                 ),
-          ],
+                const SizedBox(height: AppSpacing.md),
+                AdminInfoRow(
+                  icon: Icons.phone_rounded,
+                  label: 'الهاتف',
+                  value: teacher.phone,
+                ),
+                AdminInfoRow(
+                  icon: Icons.workspace_premium_rounded,
+                  label: 'التخصص',
+                  value: teacher.text(['specialization']),
+                ),
+              ],
+              AdminSectionTitle('المواد (${subjects.length})'),
+              if (async.isLoading && async.valueOrNull == null)
+                const ShimmerList(count: 3)
+              else if (async.hasError && async.valueOrNull == null)
+                AppErrorState(
+                  message: failureOf(async.error!).message,
+                  onRetry: () =>
+                      ref.invalidate(centerAdminRecordProvider(_path)),
+                )
+              else if (subjects.isEmpty)
+                const Text('لا توجد مواد مربوطة بهذا الدكتور')
+              else
+                for (final s in subjects)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                    child: AdminRecordCard(
+                      title: s.title,
+                      leading: const AdminAvatar(
+                        name: '',
+                        icon: Icons.menu_book_rounded,
+                      ),
+                      onTap: () =>
+                          context.push(centerAdminSubjectPath(s.id), extra: s),
+                      menu: [
+                        AdminMenuAction(
+                          'فك الربط',
+                          Icons.link_off_rounded,
+                          () => _unlink(context, ref, s),
+                          destructive: true,
+                        ),
+                      ],
+                    ),
+                  ),
+            ],
+          ),
         ),
       ),
     );

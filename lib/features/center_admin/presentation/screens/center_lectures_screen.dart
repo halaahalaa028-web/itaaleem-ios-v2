@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/center_admin/presentation/center_admin_routes.dart';
+import 'package:go_router/go_router.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
@@ -32,73 +35,78 @@ class _CenterLecturesScreenState extends ConsumerState<CenterLecturesScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('المحاضرات')),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(centerLecturesBySubjectProvider.future),
-        child: async.when(
-          loading: () => const ShimmerList(count: 6, thumbnailSize: 44),
-          error: (e, _) => _Message(
-            icon: Icons.cloud_off_rounded,
-            text: failureOf(e).message,
-            onRetry: () => ref.invalidate(centerLecturesBySubjectProvider),
-          ),
-          data: (groups) {
-            final q = _query.trim().toLowerCase();
-            final filtered = [
-              for (final g in groups)
-                (
-                  subject: g.subject,
-                  lectures: q.isEmpty
-                      ? g.lectures
-                      : g.lectures
-                            .where((l) => l.title.toLowerCase().contains(q))
-                            .toList(),
-                ),
-            ].where((g) => g.lectures.isNotEmpty).toList();
-            final total = groups.fold<int>(0, (n, g) => n + g.lectures.length);
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(centerLecturesBySubjectProvider.future),
+          child: async.when(
+            loading: () => const ShimmerList(count: 6, thumbnailSize: 44),
+            error: (e, _) => _Message(
+              icon: Icons.cloud_off_rounded,
+              text: failureOf(e).message,
+              onRetry: () => ref.invalidate(centerLecturesBySubjectProvider),
+            ),
+            data: (groups) {
+              final q = _query.trim().toLowerCase();
+              final filtered = [
+                for (final g in groups)
+                  (
+                    subject: g.subject,
+                    lectures: q.isEmpty
+                        ? g.lectures
+                        : g.lectures
+                              .where((l) => l.title.toLowerCase().contains(q))
+                              .toList(),
+                  ),
+              ].where((g) => g.lectures.isNotEmpty).toList();
+              final total = groups.fold<int>(
+                0,
+                (n, g) => n + g.lectures.length,
+              );
 
-            return ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              children: [
-                TextField(
-                  onChanged: (v) => setState(() => _query = v),
-                  decoration: InputDecoration(
-                    hintText: 'ابحث بعنوان المحاضرة',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    filled: true,
-                    fillColor: scheme.surfaceContainerHigh,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                children: [
+                  TextField(
+                    onChanged: (v) => setState(() => _query = v),
+                    decoration: InputDecoration(
+                      hintText: 'ابحث بعنوان المحاضرة',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      filled: true,
+                      fillColor: scheme.surfaceContainerHigh,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  '$total محاضرة في ${groups.length} مادة',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                if (filtered.isEmpty)
-                  _Message(
-                    icon: Icons.play_circle_outline_rounded,
-                    text: q.isEmpty
-                        ? 'لا توجد محاضرات'
-                        : 'لا توجد محاضرات بهذا الاسم',
-                    embedded: true,
-                  )
-                else
-                  for (final g in filtered)
-                    _SubjectGroup(
-                      key: ValueKey('subject-${g.subject.id}'),
-                      subject: g.subject,
-                      lectures: g.lectures,
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    '$total محاضرة في ${groups.length} مادة',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
                     ),
-              ],
-            );
-          },
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  if (filtered.isEmpty)
+                    _Message(
+                      icon: Icons.play_circle_outline_rounded,
+                      text: q.isEmpty
+                          ? 'لا توجد محاضرات'
+                          : 'لا توجد محاضرات بهذا الاسم',
+                      embedded: true,
+                    )
+                  else
+                    for (final g in filtered)
+                      _SubjectGroup(
+                        key: ValueKey('subject-${g.subject.id}'),
+                        subject: g.subject,
+                        lectures: g.lectures,
+                      ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -189,6 +197,7 @@ class _LectureRow extends StatelessWidget {
         ].join(' • '),
       ],
       trailing: adminStatusBadge(r.status),
+      onTap: () => context.push(centerAdminLecturePath(r.id), extra: r),
     );
   }
 }

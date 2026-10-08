@@ -7,6 +7,7 @@ import 'package:itaaleem/core/utils/safe_url.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:itaaleem/core/theme/app_palette.dart';
+
 /// Slim, closeable "تحديث جديد متاح" strip shown above the bottom-nav tabs
 /// whenever there's an optional (non-forced) update — see
 /// [ForceUpdateScreen] for the mandatory case, gated at the router level
@@ -72,7 +73,9 @@ class UpdateAvailableBanner extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: context.palette.onPrimary.withValues(alpha: 0.85),
+                        color: context.palette.onPrimary.withValues(
+                          alpha: 0.85,
+                        ),
                         fontSize: 11,
                       ),
                     ),
@@ -91,7 +94,11 @@ class UpdateAvailableBanner extends ConsumerWidget {
             IconButton(
               onPressed: () =>
                   ref.read(updateBannerDismissedProvider.notifier).state = true,
-              icon: Icon(Icons.close_rounded, color: context.palette.onPrimary.withValues(alpha: 0.7), size: 18),
+              icon: Icon(
+                Icons.close_rounded,
+                color: context.palette.onPrimary.withValues(alpha: 0.7),
+                size: 18,
+              ),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),

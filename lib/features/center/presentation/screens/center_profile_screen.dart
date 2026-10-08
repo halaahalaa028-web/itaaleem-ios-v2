@@ -14,6 +14,7 @@ import 'package:itaaleem/features/center/presentation/widgets/social_links_bar.d
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -113,194 +114,295 @@ class CenterProfileScreen extends ConsumerWidget {
       ),
     );
 
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    var revealIndex = 0;
+    Widget reveal(Widget child) => Reveal(index: revealIndex++, child: child);
+
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
-            pinned: true,
-            backgroundColor: context.palette.primary,
-            foregroundColor: context.palette.onPrimary,
-            flexibleSpace: FlexibleSpaceBar(
-              background: (center.cover == null || center.cover!.isEmpty)
-                  ? coverFallback
-                  : CachedNetworkImage(
-                      imageUrl: center.cover!,
-                      memCacheWidth:
-                          (MediaQuery.sizeOf(context).width *
-                                  MediaQuery.devicePixelRatioOf(context))
-                              .round(),
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => coverFallback,
-                      errorWidget: (context, url, error) => coverFallback,
-                    ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Transform.translate(
-                  offset: const Offset(0, -40),
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: context.palette.surface,
-                        width: 4,
+      body: AppBackground(
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 220,
+              pinned: true,
+              stretch: true,
+              backgroundColor: scheme.primary,
+              foregroundColor: scheme.onPrimary,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (center.cover == null || center.cover!.isEmpty)
+                      coverFallback
+                    else
+                      CachedNetworkImage(
+                        imageUrl: center.cover!,
+                        memCacheWidth:
+                            (MediaQuery.sizeOf(context).width *
+                                    MediaQuery.devicePixelRatioOf(context))
+                                .round(),
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                        placeholder: (context, url) => coverFallback,
+                        errorWidget: (context, url, error) => coverFallback,
+                      ),
+                    // Scrims so the back button and the logo read cleanly.
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            scheme.scrim.withValues(alpha: 0.25),
+                            Colors.transparent,
+                            scheme.scrim.withValues(alpha: 0.3),
+                          ],
+                        ),
                       ),
                     ),
-                    child: ClipOval(
-                      child: (center.logo == null || center.logo!.isEmpty)
-                          ? initialWidget
-                          : CachedNetworkImage(
-                              imageUrl: center.logo!,
-                              memCacheWidth: 256,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => initialWidget,
-                              errorWidget: (context, url, error) =>
-                                  initialWidget,
-                            ),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Transform.translate(
+                    offset: const Offset(0, -56),
+                    child: Hero(
+                      tag: 'center-logo-${center.id}',
+                      child: Container(
+                        width: 112,
+                        height: 112,
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: DesignTokens.brandGradient(scheme),
+                          boxShadow: DesignTokens.softShadow(
+                            scheme,
+                            strength: 1.6,
+                          ),
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: scheme.surface, width: 3),
+                          ),
+                          child: ClipOval(
+                            child: (center.logo == null || center.logo!.isEmpty)
+                                ? initialWidget
+                                : CachedNetworkImage(
+                                    imageUrl: center.logo!,
+                                    memCacheWidth: 400,
+                                    fit: BoxFit.cover,
+                                    filterQuality: FilterQuality.high,
+                                    placeholder: (context, url) =>
+                                        initialWidget,
+                                    errorWidget: (context, url, error) =>
+                                        initialWidget,
+                                  ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                Transform.translate(
-                  offset: const Offset(0, -24),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          center.name,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Center(
-                          child: Chip(
-                            label: Text(center.code),
-                            backgroundColor: context.palette.primarySurface,
-                            labelStyle: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: context.palette.primary,
-                            ),
-                            side: BorderSide.none,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            RatingChip(rating: center.rating, size: 20),
-                            const SizedBox(width: 6),
+                  Transform.translate(
+                    offset: const Offset(0, -40),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.lg,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          reveal(
                             Text(
-                              '(${center.studentsCount} طالب)',
-                              style: TextStyle(
-                                fontFamily: 'Cairo',
-                                fontSize: 13,
-                                color: context.palette.textSecondary,
+                              center.name,
+                              textAlign: TextAlign.center,
+                              style: text.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
-                          ],
-                        ),
-                        if (center.description != null) ...[
+                          ),
+                          const SizedBox(height: 10),
+                          reveal(
+                            Center(
+                              child: StatusPill(
+                                label: 'كود الانضمام: ${center.code}',
+                                icon: Icons.qr_code_2_rounded,
+                              ),
+                            ),
+                          ),
                           const SizedBox(height: AppSpacing.base),
-                          Text(
-                            center.description!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: 'Cairo',
-                              fontSize: 14,
-                              color: context.palette.textSecondary,
-                              height: 1.6,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 28),
-                        if (center.phoneNumbers.isNotEmpty ||
-                            center.socialLinks.isNotEmpty) ...[
-                          const SectionHeader(
-                            title: 'التواصل',
-                            icon: Icons.connect_without_contact_rounded,
-                            padding: EdgeInsets.only(bottom: AppSpacing.md),
-                          ),
-                          for (final phone in center.phoneNumbers)
-                            _PhoneTile(
-                              phone: phone,
-                              onTap: () => _open(context, 'tel:$phone'),
-                            ),
-                          if (center.socialLinks.isNotEmpty) ...[
-                            const SizedBox(height: AppSpacing.sm),
-                            SocialLinksBar(socialLinks: center.socialLinks),
-                          ],
-                          const SizedBox(height: 28),
-                        ],
-                        if (center.grades.isNotEmpty) ...[
-                          const SectionHeader(
-                            title: 'الكورسات',
-                            icon: Icons.groups_rounded,
-                            padding: EdgeInsets.only(bottom: AppSpacing.md),
-                          ),
-                          for (final grade in center.grades)
-                            Container(
-                              width: double.infinity,
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: AppSpacing.base,
-                                vertical: 14,
-                              ),
-                              decoration: BoxDecoration(
-                                color: context.palette.surface,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.lg,
-                                ),
-                                border: Border.all(
-                                  color: context.palette.border,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.school_rounded,
-                                    size: 18,
-                                    color: context.palette.primary,
+                          reveal(
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: StatTile(
+                                    icon: Icons.groups_rounded,
+                                    value: center.studentsCount,
+                                    label: 'طالب',
                                   ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    grade.name,
-                                    style: const TextStyle(
-                                      fontFamily: 'Cairo',
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Expanded(
+                                  child: _RatingTile(rating: center.rating),
+                                ),
+                                if (center.grades.isNotEmpty) ...[
+                                  const SizedBox(width: AppSpacing.md),
+                                  Expanded(
+                                    child: StatTile(
+                                      icon: Icons.school_rounded,
+                                      value: center.grades.length,
+                                      label: 'كورس',
+                                      color: scheme.secondary,
                                     ),
                                   ),
                                 ],
+                              ],
+                            ),
+                          ),
+                          if (center.description != null) ...[
+                            const SizedBox(height: AppSpacing.base),
+                            reveal(
+                              GlassCard(
+                                child: Text(
+                                  center.description!,
+                                  textAlign: TextAlign.center,
+                                  style: text.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                    height: 1.7,
+                                  ),
+                                ),
                               ),
                             ),
-                          const SizedBox(height: AppSpacing.md),
+                          ],
+                          if (center.phoneNumbers.isNotEmpty ||
+                              center.socialLinks.isNotEmpty) ...[
+                            const SectionHeader(title: 'التواصل'),
+                            for (final phone in center.phoneNumbers)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: reveal(
+                                  _PhoneTile(
+                                    phone: phone,
+                                    onTap: () => _open(context, 'tel:$phone'),
+                                  ),
+                                ),
+                              ),
+                            if (center.socialLinks.isNotEmpty) ...[
+                              const SizedBox(height: AppSpacing.sm),
+                              reveal(
+                                SocialLinksBar(socialLinks: center.socialLinks),
+                              ),
+                            ],
+                          ],
+                          if (center.grades.isNotEmpty) ...[
+                            const SectionHeader(title: 'الكورسات'),
+                            for (final grade in center.grades)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: reveal(_GradeCard(name: grade.name)),
+                              ),
+                          ],
+                          const SizedBox(height: AppSpacing.xl),
+                          JoinCenterButton(center: center),
+                          const SizedBox(height: AppSpacing.lg),
                         ],
-                        const SizedBox(height: AppSpacing.md),
-                        JoinCenterButton(center: center),
-                        const SizedBox(height: AppSpacing.lg),
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GradeCard extends StatelessWidget {
+  const _GradeCard({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GlassCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: 14,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              gradient: DesignTokens.brandGradient(scheme),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.school_rounded,
+              size: 20,
+              color: scheme.onPrimary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              name,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RatingTile extends StatelessWidget {
+  const _RatingTile({required this.rating});
+
+  final double rating;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: DesignTokens.cardBorder(scheme)),
+        boxShadow: DesignTokens.softShadow(scheme, strength: 0.6),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: scheme.tertiary.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.star_rounded, size: 20, color: scheme.tertiary),
+          ),
+          const SizedBox(height: 8),
+          RatingChip(rating: rating, size: 18),
+          const SizedBox(height: 2),
+          Text(
+            'التقييم',
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -387,49 +489,42 @@ class _PhoneTile extends StatelessWidget {
   Widget build(BuildContext context) {
     // Radius and border both come from `shape`; passing `borderRadius`
     // alongside it trips Material's assertion.
-    return Material(
-      color: context.palette.surface,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        side: BorderSide(color: context.palette.border),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: context.palette.success.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(
-                  Icons.call_rounded,
-                  size: 20,
-                  color: context.palette.success,
-                ),
+    return GlassCard(
+      onTap: onTap,
+      padding: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: context.palette.success.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text(
-                  phone,
-                  style: const TextStyle(
-                    fontFamily: 'Cairo',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+              child: Icon(
+                Icons.call_rounded,
+                size: 20,
+                color: context.palette.success,
+              ),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Text(
+                phone,
+                style: const TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              Icon(
-                Icons.chevron_left_rounded,
-                color: context.palette.textTertiary,
-              ),
-            ],
-          ),
+            ),
+            Icon(
+              Icons.chevron_left_rounded,
+              color: context.palette.textTertiary,
+            ),
+          ],
         ),
       ),
     );

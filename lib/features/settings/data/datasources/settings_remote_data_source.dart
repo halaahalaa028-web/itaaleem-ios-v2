@@ -15,7 +15,9 @@ class SettingsRemoteDataSource {
       options: skipAuthOptions,
     );
     final data = response.data?['data'];
-    final body = data is Map<String, dynamic> ? data : (response.data ?? const <String, dynamic>{});
+    final body = data is Map<String, dynamic>
+        ? data
+        : (response.data ?? const <String, dynamic>{});
     return AppSettingsModel.fromJson(body);
   }
 }

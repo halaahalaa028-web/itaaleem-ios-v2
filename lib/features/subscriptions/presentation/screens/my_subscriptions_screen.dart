@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/fade_slide_in.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,36 +24,38 @@ class MySubscriptionsScreen extends ConsumerWidget {
     final subscriptions = ref.watch(mySubscriptionsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('اشتراكاتي')),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(mySubscriptionsProvider.future),
-        child: subscriptions.when(
-          loading: () => const ShimmerList(count: 4),
-          error: (error, _) => _Scrollable(
-            child: AppErrorState(
-              message: failureOf(error).message,
-              onRetry: () => ref.invalidate(mySubscriptionsProvider),
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(mySubscriptionsProvider.future),
+          child: subscriptions.when(
+            loading: () => const ShimmerList(count: 4),
+            error: (error, _) => _Scrollable(
+              child: AppErrorState(
+                message: failureOf(error).message,
+                onRetry: () => ref.invalidate(mySubscriptionsProvider),
+              ),
             ),
+            data: (items) => items.isEmpty
+                ? const _Scrollable(
+                    child: AppEmptyState(
+                      icon: Icons.card_membership_rounded,
+                      title: 'لا توجد اشتراكات حالياً',
+                      subtitle:
+                          'المواد اللي هتشترك فيها هتظهر هنا بعد تفعيلها من الإدارة',
+                    ),
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.listItemSpacing),
+                    itemBuilder: (context, i) => FadeSlideIn.staggered(
+                      index: i,
+                      child: _SubscriptionCard(subscription: items[i]),
+                    ),
+                  ),
           ),
-          data: (items) => items.isEmpty
-              ? const _Scrollable(
-                  child: AppEmptyState(
-                    icon: Icons.card_membership_rounded,
-                    title: 'لا توجد اشتراكات حالياً',
-                    subtitle:
-                        'المواد اللي هتشترك فيها هتظهر هنا بعد تفعيلها من الإدارة',
-                  ),
-                )
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: AppSpacing.listItemSpacing),
-                  itemBuilder: (context, i) => FadeSlideIn.staggered(
-                    index: i,
-                    child: _SubscriptionCard(subscription: items[i]),
-                  ),
-                ),
         ),
       ),
     );

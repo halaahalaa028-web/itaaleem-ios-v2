@@ -5,6 +5,7 @@ import 'package:itaaleem/app/router/route_args.dart';
 import 'package:itaaleem/features/exams/domain/entities/exam.dart';
 import 'package:itaaleem/features/exams/domain/entities/exam_result.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -72,119 +73,135 @@ class ExamResultScreen extends StatelessWidget {
         title: Text(title ?? 'نتيجة الامتحان'),
         automaticallyImplyLeading: false,
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AppSpacing.xl),
+      body: AppBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppSpacing.xl),
+                  child: Column(
+                    children: [
+                      CelebrationBurst(
+                        active: passed && result.percentage >= 85,
+                        child: _ScoreRing(
+                          percentage: result.percentage,
+                          color: color,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Reveal(
+                        index: 2,
+                        child: Text(
+                          passed
+                              ? 'مبروك، لقد نجحت! 🎉'
+                              : 'لم تحقق درجة النجاح',
+                          textAlign: TextAlign.center,
+                          style: text.headlineSmall?.copyWith(
+                            color: color,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (!passed) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          'راجع إجاباتك وحاول مرة أخرى',
+                          style: text.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.xl),
+                      Reveal(
+                        index: 3,
+                        child: Row(
+                          children: [
+                            _Stat(
+                              icon: Icons.grading_rounded,
+                              label: 'الدرجة',
+                              value:
+                                  '${_formatScore(result.score)} / ${_formatScore(result.totalScore)}',
+                            ),
+                            if (result.questionResults.isNotEmpty) ...[
+                              const SizedBox(width: AppSpacing.md),
+                              _Stat(
+                                icon: Icons.check_circle_outline_rounded,
+                                label: 'إجابات صحيحة',
+                                value:
+                                    '$correctCount من ${result.questionResults.length}',
+                              ),
+                            ],
+                            if (time != null) ...[
+                              const SizedBox(width: AppSpacing.md),
+                              _Stat(
+                                icon: Icons.timer_rounded,
+                                label: 'الوقت',
+                                value: _formatTime(time),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (result.questionResults.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xl),
+                        _QuestionBreakdown(
+                          questionResults: result.questionResults,
+                          questions: questions,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.base),
                 child: Column(
                   children: [
-                    _ScoreRing(percentage: result.percentage, color: color),
-                    const SizedBox(height: AppSpacing.lg),
-                    Text(
-                      passed ? 'مبروك، لقد نجحت! 🎉' : 'لم تحقق درجة النجاح',
-                      textAlign: TextAlign.center,
-                      style: text.headlineSmall?.copyWith(
-                        color: color,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (!passed) ...[
-                      const SizedBox(height: AppSpacing.xs),
-                      Text(
-                        'راجع إجاباتك وحاول مرة أخرى',
-                        style: text.bodyMedium?.copyWith(
-                          color: cs.onSurfaceVariant,
+                    if (_canReview) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          icon: const Icon(Icons.fact_check_rounded),
+                          label: const Text('مراجعة الإجابات'),
+                          onPressed: () => context.push<void>(
+                            examReviewPath,
+                            extra: ExamReviewArgs(
+                              title: title,
+                              result: result,
+                              questions: questions,
+                              answers: answers,
+                              attemptId: result.attemptId,
+                            ),
+                          ),
                         ),
                       ),
+                      const SizedBox(height: AppSpacing.sm),
                     ],
-                    const SizedBox(height: AppSpacing.xl),
                     Row(
                       children: [
-                        _Stat(
-                          icon: Icons.grading_rounded,
-                          label: 'الدرجة',
-                          value:
-                              '${_formatScore(result.score)} / ${_formatScore(result.totalScore)}',
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => context.canPop()
+                                ? context.pop()
+                                : context.go(homePath),
+                            child: const Text('رجوع للمادة'),
+                          ),
                         ),
-                        if (result.questionResults.isNotEmpty) ...[
-                          const SizedBox(width: AppSpacing.md),
-                          _Stat(
-                            icon: Icons.check_circle_outline_rounded,
-                            label: 'إجابات صحيحة',
-                            value:
-                                '$correctCount من ${result.questionResults.length}',
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => context.go(homePath),
+                            child: const Text('الرئيسية'),
                           ),
-                        ],
-                        if (time != null) ...[
-                          const SizedBox(width: AppSpacing.md),
-                          _Stat(
-                            icon: Icons.timer_rounded,
-                            label: 'الوقت',
-                            value: _formatTime(time),
-                          ),
-                        ],
+                        ),
                       ],
                     ),
-                    if (result.questionResults.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xl),
-                      _QuestionBreakdown(
-                        questionResults: result.questionResults,
-                        questions: questions,
-                      ),
-                    ],
                   ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(AppSpacing.base),
-              child: Column(
-                children: [
-                  if (_canReview) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        icon: const Icon(Icons.fact_check_rounded),
-                        label: const Text('مراجعة الإجابات'),
-                        onPressed: () => context.push<void>(
-                          examReviewPath,
-                          extra: ExamReviewArgs(
-                            title: title,
-                            result: result,
-                            questions: questions,
-                            answers: answers,
-                            attemptId: result.attemptId,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => context.canPop()
-                              ? context.pop()
-                              : context.go(homePath),
-                          child: const Text('رجوع للمادة'),
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => context.go(homePath),
-                          child: const Text('الرئيسية'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -206,44 +223,46 @@ class _PendingResult extends StatelessWidget {
         title: Text(title ?? 'نتيجة الامتحان'),
         automaticallyImplyLeading: false,
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          child: Column(
-            children: [
-              const Spacer(),
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: cs.primaryContainer,
-                child: Icon(
-                  Icons.task_alt_rounded,
-                  size: 52,
-                  color: cs.onPrimaryContainer,
+      body: AppBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: Column(
+              children: [
+                const Spacer(),
+                CircleAvatar(
+                  radius: 48,
+                  backgroundColor: cs.primaryContainer,
+                  child: Icon(
+                    Icons.task_alt_rounded,
+                    size: 52,
+                    color: cs.onPrimaryContainer,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                'تم تسليم الامتحان',
-                style: text.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
+                const SizedBox(height: AppSpacing.lg),
+                Text(
+                  'تم تسليم الامتحان',
+                  style: text.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'ستظهر النتيجة بعد أن يعلنها المدرس',
-                textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () =>
-                      context.canPop() ? context.pop() : context.go(homePath),
-                  child: const Text('رجوع للمادة'),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'ستظهر النتيجة بعد أن يعلنها المدرس',
+                  textAlign: TextAlign.center,
+                  style: text.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
                 ),
-              ),
-            ],
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () =>
+                        context.canPop() ? context.pop() : context.go(homePath),
+                    child: const Text('رجوع للمادة'),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -266,9 +285,22 @@ class _ScoreRing extends StatelessWidget {
       tween: Tween(begin: 0, end: percentage.clamp(0, 100).toDouble()),
       duration: const Duration(milliseconds: 1100),
       curve: Curves.easeOutCubic,
-      builder: (context, value, _) => SizedBox(
-        width: 180,
-        height: 180,
+      builder: (context, value, _) => Container(
+        width: 188,
+        height: 188,
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Theme.of(context).colorScheme.surface,
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.28),
+              blurRadius: 40,
+              spreadRadius: -6,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
         child: CustomPaint(
           painter: _RingPainter(
             fraction: value / 100,
@@ -344,12 +376,22 @@ class _Stat extends StatelessWidget {
           horizontal: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          color: cs.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(AppRadius.md),
+          color: cs.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: DesignTokens.cardBorder(cs)),
+          boxShadow: DesignTokens.softShadow(cs, strength: 0.6),
         ),
         child: Column(
           children: [
-            Icon(icon, color: cs.primary, size: 22),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: cs.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: cs.primary, size: 20),
+            ),
             const SizedBox(height: AppSpacing.xs),
             Text(value, textAlign: TextAlign.center, style: text.titleSmall),
             Text(label, style: text.labelSmall),
@@ -462,13 +504,15 @@ class ExamAttemptResultScreen extends ConsumerWidget {
     return review.when(
       loading: () => Scaffold(
         appBar: AppBar(title: const Text('نتيجة الامتحان')),
-        body: const ShimmerDetail(heroHeight: 200),
+        body: AppBackground(child: const ShimmerDetail(heroHeight: 200)),
       ),
       error: (error, _) => Scaffold(
         appBar: AppBar(title: const Text('نتيجة الامتحان')),
-        body: AppErrorState(
-          message: failureOf(error).message,
-          onRetry: () => ref.invalidate(examAttemptReviewProvider(attemptId)),
+        body: AppBackground(
+          child: AppErrorState(
+            message: failureOf(error).message,
+            onRetry: () => ref.invalidate(examAttemptReviewProvider(attemptId)),
+          ),
         ),
       ),
       data: (result) => ExamResultScreen(

@@ -13,5 +13,7 @@ final bannersProvider = FutureProvider.autoDispose<List<AppBanner>>((
 ) async {
   final isDemo = ref.watch(isDemoSessionProvider);
   if (isDemo) return const [];
-  return ref.cached(() => ref.read(bannersRemoteDataSourceProvider).getBanners());
+  return ref.cached(
+    () => ref.read(bannersRemoteDataSourceProvider).getBanners(),
+  );
 });

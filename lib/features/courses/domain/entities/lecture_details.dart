@@ -53,12 +53,19 @@ class LecturePdf {
     this.isDownloadable = false,
     this.lastPage = 1,
     this.readPercentage = 0,
+    this.isLocked = false,
   });
 
   final int id;
   final String title;
+
+  /// Empty when withheld (locked); a signed URL otherwise.
   final String fileUrl;
   final bool isDownloadable;
+
+  /// `is_locked` — or no URL sent at all: never open/download it.
+  final bool isLocked;
+  bool get locked => isLocked || fileUrl.isEmpty;
 
   /// Where the student left off reading, if the API reports it — mirrors
   /// [VideoProgress.lastPositionSeconds] for resuming playback.
@@ -72,12 +79,16 @@ class LectureAttachment {
     required this.title,
     required this.fileUrl,
     this.isDownloadable = false,
+    this.isLocked = false,
   });
 
+  /// 0 when the API sends `id: null` (an id-less `lesson_pdf` entry).
   final int id;
   final String title;
   final String fileUrl;
   final bool isDownloadable;
+  final bool isLocked;
+  bool get locked => isLocked || fileUrl.isEmpty;
 }
 
 /// Which backend the video is hosted on — drives which player widget the

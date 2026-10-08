@@ -41,7 +41,12 @@ class OwnReviewMenu extends ConsumerWidget {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('حذف', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.error)),
+            child: Text(
+              'حذف',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: context.palette.error),
+            ),
           ),
         ],
       ),
@@ -123,7 +128,9 @@ class CenterReviewsSection extends ConsumerWidget {
                 children: [
                   Text(
                     'تعذر تحميل التقييمات',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: palette.textSecondary),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: palette.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   AppButton.text(
@@ -266,7 +273,9 @@ class _SummaryCard extends StatelessWidget {
               const SizedBox(height: AppSpacing.xs),
               Text(
                 '$count تقييم',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: palette.textSecondary),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.textSecondary),
               ),
             ],
           ),
@@ -311,11 +320,7 @@ class _DistributionBar extends StatelessWidget {
                   '$star',
                   style: const TextStyle(fontFamily: 'Cairo', fontSize: 11),
                 ),
-                Icon(
-                  Icons.star_rounded,
-                  size: 12,
-                  color: context.palette.gold,
-                ),
+                Icon(Icons.star_rounded, size: 12, color: context.palette.gold),
               ],
             ),
           ),

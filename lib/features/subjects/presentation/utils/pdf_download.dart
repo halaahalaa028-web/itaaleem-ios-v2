@@ -1,3 +1,4 @@
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
@@ -22,8 +23,9 @@ Future<void> downloadPdf(
   WidgetRef ref, {
   required String url,
   required String title,
+  ContentFileRef? fileRef,
 }) async {
-  if (url.isEmpty) return;
+  if (url.isEmpty && fileRef == null) return;
   ScaffoldMessenger.of(
     context,
   ).showSnackBar(const SnackBar(content: Text('جاري تحميل الملف...')));
@@ -35,7 +37,12 @@ Future<void> downloadPdf(
     partial = File(
       '${tempDir.path}/pdf_download_${DateTime.now().microsecondsSinceEpoch}.part',
     );
-    await dio.download(url, partial.path);
+    if (fileRef != null) {
+      // Signed links expire: refreshes/retries once, and maps 403 locked.
+      await downloadContentFile(dio, fileRef, partial.path, download: true);
+    } else {
+      await dio.download(url, partial.path);
+    }
     if (await partial.length() == 0) throw StateError('empty pdf');
     final savedPath = await downloads.saveFileToDownloads(
       sourcePath: partial.path,
@@ -52,6 +59,8 @@ Future<void> downloadPdf(
       actionLabel: 'فتح الملف',
       onAction: () => OpenFilex.open(savedPath),
     );
+  } on ContentLockedException catch (e) {
+    if (context.mounted) AppToast.showError(context, e.displayMessage);
   } catch (e) {
     if (kDebugMode) debugPrint('[downloadPdf] failed: $e');
     if (context.mounted) AppToast.showError(context, 'تعذر تحميل الملف');

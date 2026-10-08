@@ -6,6 +6,7 @@ import 'package:itaaleem/features/center_admin/presentation/screens/center_stude
 import 'package:itaaleem/features/center_admin/presentation/screens/center_subjects_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_teachers_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_lectures_screen.dart';
+import 'package:itaaleem/features/center_admin/presentation/screens/center_lecture_detail_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_exams_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_subscriptions_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_notifications_screen.dart';
@@ -721,6 +722,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               state: state,
               child: const CenterLecturesScreen(),
             ),
+            routes: [
+              GoRoute(
+                path: ':id',
+                pageBuilder: (context, state) => buildPageWithTransition(
+                  state: state,
+                  child: CenterLectureDetailScreen(
+                    lectureId: int.parse(state.pathParameters['id']!),
+                    preview: state.extra is AdminRecord
+                        ? state.extra! as AdminRecord
+                        : null,
+                  ),
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: 'exams',
@@ -899,6 +914,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                     title: args.title,
                     pdfUrl: args.pdfUrl,
                     downloadable: args.downloadable,
+                    fileRef: args.fileRef,
                   )
                 : const _MissingArgsScreen(),
           );

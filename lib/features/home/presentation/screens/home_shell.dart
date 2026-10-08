@@ -10,11 +10,13 @@ import 'package:itaaleem/features/home/presentation/screens/subjects_screen.dart
 import 'package:itaaleem/features/update/presentation/widgets/update_available_banner.dart';
 import 'package:itaaleem/features/video/presentation/screens/downloads_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
+
 /// Main shell: a 4-tab bottom navigation bar (الرئيسية / المواد / التنزيلات /
 /// حسابي) backed by a [PageView] so the tabs can also be swiped
 /// left/right. Plain local widget state (not go_router nested routes) —
@@ -97,101 +99,125 @@ class _HomeShellState extends ConsumerState<HomeShell> {
         setState(() => _currentIndex = 0);
       }
     });
-    return Scaffold(
-      body: Column(
-        children: [
-          const UpdateAvailableBanner(),
-          if (!isOnline)
-            Material(
-              color: context.palette.warning.withValues(alpha: 0.15),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 8, 6),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.wifi_off_rounded, size: 18),
-                      const SizedBox(width: AppSpacing.sm),
-                      const Expanded(
-                        child: Text(
-                          'لا يوجد اتصال بالإنترنت — المحاضرات المحمّلة متاحة',
-                          style: TextStyle(fontFamily: 'Cairo', fontSize: 12),
-                        ),
+    // The shell paints the living background once; the tab screens get a
+    // transparent scaffold/app bar so it shows through, and the glass nav
+    // blurs it.
+    final theme = Theme.of(context);
+    return AppBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Theme(
+          data: theme.copyWith(
+            scaffoldBackgroundColor: Colors.transparent,
+            appBarTheme: theme.appBarTheme.copyWith(
+              backgroundColor: Colors.transparent,
+            ),
+          ),
+          child: Column(
+            children: [
+              const UpdateAvailableBanner(),
+              if (!isOnline)
+                Material(
+                  color: context.palette.warning.withValues(alpha: 0.15),
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(
+                        16,
+                        6,
+                        8,
+                        6,
                       ),
-                      TextButton(
-                        onPressed: () => _goToTab(2),
-                        child: const Text('التنزيلات'),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.wifi_off_rounded, size: 18),
+                          const SizedBox(width: AppSpacing.sm),
+                          const Expanded(
+                            child: Text(
+                              'لا يوجد اتصال بالإنترنت — المحاضرات المحمّلة متاحة',
+                              style: TextStyle(
+                                fontFamily: 'Cairo',
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => _goToTab(2),
+                            child: const Text('التنزيلات'),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
+                ),
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  onPageChanged: _onPageChanged,
+                  children: [
+                    _LazyTab(
+                      visited: _visitedTabs.contains(0),
+                      builder: () => HomeScreen(
+                        onSubjectsTap: () => _goToTab(1),
+                        onNotificationsTap: () =>
+                            context.push(notificationsPath),
+                      ),
+                    ),
+                    _LazyTab(
+                      visited: _visitedTabs.contains(1),
+                      builder: () => const SubjectsScreen(),
+                    ),
+                    _LazyTab(
+                      visited: _visitedTabs.contains(2),
+                      builder: () => const DownloadsScreen(),
+                    ),
+                    _LazyTab(
+                      visited: _visitedTabs.contains(3),
+                      builder: () => const AccountTab(),
+                    ),
+                    if (isAdmin)
+                      _LazyTab(
+                        visited: _visitedTabs.contains(_adminTabIndex),
+                        builder: () => const CenterDashboardScreen(),
+                      ),
+                  ],
                 ),
               ),
-            ),
-          Expanded(
-            child: PageView(
-              controller: _pageController,
-              onPageChanged: _onPageChanged,
-              children: [
-                _LazyTab(
-                  visited: _visitedTabs.contains(0),
-                  builder: () => HomeScreen(
-                    onSubjectsTap: () => _goToTab(1),
-                    onNotificationsTap: () => context.push(notificationsPath),
-                  ),
-                ),
-                _LazyTab(
-                  visited: _visitedTabs.contains(1),
-                  builder: () => const SubjectsScreen(),
-                ),
-                _LazyTab(
-                  visited: _visitedTabs.contains(2),
-                  builder: () => const DownloadsScreen(),
-                ),
-                _LazyTab(
-                  visited: _visitedTabs.contains(3),
-                  builder: () => const AccountTab(),
-                ),
-                if (isAdmin)
-                  _LazyTab(
-                    visited: _visitedTabs.contains(_adminTabIndex),
-                    builder: () => const CenterDashboardScreen(),
-                  ),
-              ],
-            ),
+            ],
           ),
-        ],
-      ),
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: _currentIndex.clamp(0, isAdmin ? _adminTabIndex : 3),
-        onTap: _goToTab,
-        items: [
-          const AppBottomNavItem(
-            icon: Icons.home_outlined,
-            selectedIcon: Icons.home_rounded,
-            label: 'الرئيسية',
-          ),
-          const AppBottomNavItem(
-            icon: Icons.menu_book_outlined,
-            selectedIcon: Icons.menu_book_rounded,
-            label: 'المواد',
-          ),
-          const AppBottomNavItem(
-            icon: Icons.download_outlined,
-            selectedIcon: Icons.download_rounded,
-            label: 'التنزيلات',
-          ),
-          const AppBottomNavItem(
-            icon: Icons.person_outline_rounded,
-            selectedIcon: Icons.person_rounded,
-            label: 'حسابي',
-          ),
-          if (isAdmin)
+        ),
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: _currentIndex.clamp(0, isAdmin ? _adminTabIndex : 3),
+          onTap: _goToTab,
+          items: [
             const AppBottomNavItem(
-              icon: Icons.admin_panel_settings_outlined,
-              selectedIcon: Icons.admin_panel_settings_rounded,
-              label: 'الإدارة',
+              icon: Icons.home_outlined,
+              selectedIcon: Icons.home_rounded,
+              label: 'الرئيسية',
             ),
-        ],
+            const AppBottomNavItem(
+              icon: Icons.menu_book_outlined,
+              selectedIcon: Icons.menu_book_rounded,
+              label: 'المواد',
+            ),
+            const AppBottomNavItem(
+              icon: Icons.download_outlined,
+              selectedIcon: Icons.download_rounded,
+              label: 'التنزيلات',
+            ),
+            const AppBottomNavItem(
+              icon: Icons.person_outline_rounded,
+              selectedIcon: Icons.person_rounded,
+              label: 'حسابي',
+            ),
+            if (isAdmin)
+              const AppBottomNavItem(
+                icon: Icons.admin_panel_settings_outlined,
+                selectedIcon: Icons.admin_panel_settings_rounded,
+                label: 'الإدارة',
+              ),
+          ],
+        ),
       ),
     );
   }

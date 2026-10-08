@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/error/failure.dart';
@@ -39,7 +40,7 @@ Widget adminStatusBadge(String? status) {
     'paused' ||
     'inactive' ||
     'disabled' => (StatusType.warning, 'موقوف'),
-    'cancelled' || 'canceled' => (StatusType.locked, 'ملغي'),
+    'cancelled' || 'canceled' => (StatusType.error, 'ملغي'),
     'pending' => (StatusType.pending, 'قيد المراجعة'),
     null => (StatusType.info, 'غير محدد'),
     _ => (StatusType.info, status),
@@ -114,14 +115,10 @@ class AdminRecordCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final shown = lines.whereType<String>().where((l) => l.trim().isNotEmpty);
-    return Card(
-      elevation: 1,
-      margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      clipBehavior: Clip.antiAlias,
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      radius: AppRadius.xl,
+      shadow: true,
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -251,6 +248,11 @@ class AdminField {
 /// A bottom-sheet form; resolves to the entered values (trimmed, empties
 /// dropped) or `null` if dismissed. [extra] adds custom inputs (a switch, a
 /// picker) — they write into the same map through the callback.
+///
+/// The sheet only *returns* the values (`Navigator.pop(result)`); the caller
+/// runs the API call with its own context. Its text controllers live in the
+/// sheet's [State] and are disposed in `dispose()` — after the exit
+/// animation — never while the route is still closing.
 Future<Map<String, dynamic>?> showAdminForm(
   BuildContext context, {
   required String title,
@@ -261,91 +263,139 @@ Future<Map<String, dynamic>?> showAdminForm(
     void Function(VoidCallback) setState,
   )?
   extra,
-}) {
-  final formKey = GlobalKey<FormState>();
-  final controllers = {
-    for (final f in fields) f.key: TextEditingController(text: f.initial),
-  };
-  final values = <String, dynamic>{};
-  return showModalBottomSheet<Map<String, dynamic>>(
+}) async {
+  final result = await showModalBottomSheet<Map<String, dynamic>>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
     showDragHandle: true,
-    builder: (sheetContext) => StatefulBuilder(
-      builder: (context, setState) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
+    builder: (_) => _AdminFormSheet(
+      title: title,
+      fields: fields,
+      submitLabel: submitLabel,
+      extra: extra,
+    ),
+  );
+  await waitForRouteExit();
+  return result;
+}
+
+/// `showModalBottomSheet`/`showDialog` complete on `pop`, while the route
+/// (and the closing keyboard) is still animating out and its subtree still
+/// depends on inherited widgets. Refreshing lists in that window tears down
+/// elements under the exiting route ("'_dependents.isEmpty': is not
+/// true"), so callers wait for the exit transition before any write.
+Future<void> waitForRouteExit() =>
+    Future<void>.delayed(const Duration(milliseconds: 350));
+
+class _AdminFormSheet extends StatefulWidget {
+  const _AdminFormSheet({
+    required this.title,
+    required this.fields,
+    required this.submitLabel,
+    this.extra,
+  });
+
+  final String title;
+  final List<AdminField> fields;
+  final String submitLabel;
+  final List<Widget> Function(
+    Map<String, dynamic> values,
+    void Function(VoidCallback) setState,
+  )?
+  extra;
+
+  @override
+  State<_AdminFormSheet> createState() => _AdminFormSheetState();
+}
+
+class _AdminFormSheetState extends State<_AdminFormSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final Map<String, TextEditingController> _controllers = {
+    for (final f in widget.fields)
+      f.key: TextEditingController(text: f.initial),
+  };
+  final _values = <String, dynamic>{};
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    FocusScope.of(context).unfocus();
+    final result = <String, dynamic>{..._values};
+    for (final f in widget.fields) {
+      final v = _controllers[f.key]!.text.trim();
+      if (v.isEmpty) continue;
+      result[f.key] = f.numeric ? int.tryParse(v) ?? v : v;
+    }
+    Navigator.of(context).pop(result);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          0,
+          AppSpacing.lg,
+          AppSpacing.lg,
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            0,
-            AppSpacing.lg,
-            AppSpacing.lg,
-          ),
-          child: Form(
-            key: formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                widget.title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: AppSpacing.base),
+              for (final f in widget.fields) ...[
+                TextFormField(
+                  controller: _controllers[f.key],
+                  keyboardType: f.numeric ? TextInputType.number : f.keyboard,
+                  inputFormatters: f.numeric
+                      ? [FilteringTextInputFormatter.digitsOnly]
+                      : null,
+                  maxLines: f.maxLines,
+                  decoration: InputDecoration(
+                    labelText: f.label,
+                    prefixIcon: f.icon == null ? null : Icon(f.icon),
+                    border: const OutlineInputBorder(),
                   ),
+                  validator: f.required
+                      ? (v) => v == null || v.trim().isEmpty
+                            ? 'هذا الحقل مطلوب'
+                            : null
+                      : null,
                 ),
-                const SizedBox(height: AppSpacing.base),
-                for (final f in fields) ...[
-                  TextFormField(
-                    controller: controllers[f.key],
-                    keyboardType: f.numeric ? TextInputType.number : f.keyboard,
-                    inputFormatters: f.numeric
-                        ? [FilteringTextInputFormatter.digitsOnly]
-                        : null,
-                    maxLines: f.maxLines,
-                    decoration: InputDecoration(
-                      labelText: f.label,
-                      prefixIcon: f.icon == null ? null : Icon(f.icon),
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: f.required
-                        ? (v) => v == null || v.trim().isEmpty
-                              ? 'هذا الحقل مطلوب'
-                              : null
-                        : null,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-                if (extra != null) ...extra(values, setState),
-                const SizedBox(height: AppSpacing.sm),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                  ),
-                  onPressed: () {
-                    if (!(formKey.currentState?.validate() ?? false)) return;
-                    final result = <String, dynamic>{...values};
-                    for (final f in fields) {
-                      final v = controllers[f.key]!.text.trim();
-                      if (v.isEmpty) continue;
-                      result[f.key] = f.numeric ? int.tryParse(v) ?? v : v;
-                    }
-                    Navigator.of(sheetContext).pop(result);
-                  },
-                  child: Text(submitLabel),
-                ),
+                const SizedBox(height: AppSpacing.md),
               ],
-            ),
+              if (widget.extra != null) ...widget.extra!(_values, setState),
+              const SizedBox(height: AppSpacing.sm),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: _submit,
+                child: Text(widget.submitLabel),
+              ),
+            ],
           ),
         ),
       ),
-    ),
-  ).whenComplete(() {
-    for (final c in controllers.values) {
-      c.dispose();
-    }
-  });
+    );
+  }
 }
 
 Future<bool> confirmAdmin(
@@ -379,25 +429,38 @@ Future<bool> confirmAdmin(
       ],
     ),
   );
+  if (ok == true) await waitForRouteExit();
   return ok ?? false;
 }
 
-/// Runs a write, then toasts [success] and refreshes the lists — or toasts
-/// the Arabic failure.
-Future<bool> runAdminAction(
+/// Runs a write, then toasts [success] (or the server's message from
+/// [successOf]) and refreshes the lists — or toasts the Arabic failure.
+///
+/// Everything tied to [context] / [ref] (the provider container and the
+/// root navigator's context for the toast) is captured *before* the await:
+/// the row that triggered the action is usually rebuilt away by the very
+/// refresh that follows, so its own context/ref must not be touched after.
+Future<bool> runAdminAction<T>(
   BuildContext context,
   WidgetRef ref,
-  Future<void> Function() action, {
+  Future<T> Function() action, {
   required String success,
+  String Function(T result)? successOf,
   String section = '',
 }) async {
+  final container = ProviderScope.containerOf(context, listen: false);
+  final toastContext = Navigator.of(context, rootNavigator: true).context;
   try {
-    await action();
-    invalidateAdminSection(ref, section);
-    if (context.mounted) AppToast.showSuccess(context, success);
+    final result = await action();
+    invalidateAdminContainer(container);
+    if (toastContext.mounted) {
+      AppToast.showSuccess(toastContext, successOf?.call(result) ?? success);
+    }
     return true;
   } catch (e) {
-    if (context.mounted) AppToast.showError(context, failureOf(e).message);
+    if (toastContext.mounted) {
+      AppToast.showError(toastContext, failureOf(e).message);
+    }
     return false;
   }
 }
@@ -458,12 +521,7 @@ class AdminSectionTitle extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
+            child: SectionTitle(title: title, padding: EdgeInsets.zero),
           ),
           ?action,
         ],

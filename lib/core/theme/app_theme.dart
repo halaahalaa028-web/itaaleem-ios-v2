@@ -115,7 +115,12 @@ class AppTheme {
         shadowColor: s.shadow.withValues(alpha: 0.05),
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
-        shape: rounded(AppRadius.card, BorderSide(color: hairline)),
+        shape: rounded(
+          AppRadius.card,
+          BorderSide(
+            color: isDark ? s.onSurface.withValues(alpha: 0.08) : hairline,
+          ),
+        ),
       ),
 
       // Primary CTA. Minimum width stays finite (not double.infinity) so a
@@ -261,12 +266,13 @@ class AppTheme {
 
       // Rounded 3px indicator under the label, the width of the label.
       tabBarTheme: TabBarThemeData(
-        labelColor: s.primary,
+        labelColor: s.onPrimaryContainer,
         unselectedLabelColor: s.onSurfaceVariant,
-        indicatorSize: TabBarIndicatorSize.label,
-        indicator: UnderlineTabIndicator(
-          borderSide: BorderSide(color: s.primary, width: 3),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(3)),
+        // Pill indicator, matching the web's segmented tabs.
+        indicatorSize: TabBarIndicatorSize.tab,
+        indicator: BoxDecoration(
+          color: s.primaryContainer,
+          borderRadius: BorderRadius.circular(AppRadius.full),
         ),
         dividerColor: faintLine,
         labelStyle: cairo(14, FontWeight.w700),

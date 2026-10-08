@@ -36,6 +36,8 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:itaaleem/core/widgets/content_watermark.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/subjects/presentation/widgets/lesson_access.dart';
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'package:itaaleem/features/subscriptions/presentation/widgets/contact_center_access_sheet.dart';
 import 'package:itaaleem/core/utils/platform_utils.dart';
 import 'package:itaaleem/core/utils/open_file_in_app.dart';
@@ -1364,13 +1366,16 @@ class _AttachmentsTabState extends ConsumerState<_AttachmentsTab> {
             subtitle: pdf.readPercentage > 0
                 ? 'تمت قراءة ${pdf.readPercentage.round()}٪'
                 : null,
-            isDownloadable: pdf.isDownloadable,
+            isDownloadable: pdf.isDownloadable && !pdf.locked,
+            locked: pdf.locked,
             isDownloading: _progress.containsKey('pdf-${pdf.id}'),
             downloadProgress: _progress['pdf-${pdf.id}'],
-            onView: () => context.push(
-              '/lectures/${widget.lectureId}/pdfs/${pdf.id}',
-              extra: pdf.title,
-            ),
+            onView: pdf.locked
+                ? () => _showLocked(context)
+                : () => context.push(
+                    '/lectures/${widget.lectureId}/pdfs/${pdf.id}',
+                    extra: pdf.title,
+                  ),
             onDownload: () => _download(
               key: 'pdf-${pdf.id}',
               url: pdf.fileUrl,
@@ -1384,10 +1389,13 @@ class _AttachmentsTabState extends ConsumerState<_AttachmentsTab> {
             icon: Icons.attach_file_rounded,
             title: attachment.title,
             subtitle: null,
-            isDownloadable: attachment.isDownloadable,
+            isDownloadable: attachment.isDownloadable && !attachment.locked,
+            locked: attachment.locked,
             isDownloading: _progress.containsKey('att-${attachment.id}'),
             downloadProgress: _progress['att-${attachment.id}'],
-            onView: () => _openLink(context, attachment.fileUrl),
+            onView: attachment.locked
+                ? () => _showLocked(context)
+                : () => _openLink(context, attachment.fileUrl),
             onDownload: () => _download(
               key: 'att-${attachment.id}',
               url: attachment.fileUrl,
@@ -1399,6 +1407,9 @@ class _AttachmentsTabState extends ConsumerState<_AttachmentsTab> {
       ],
     );
   }
+
+  Future<void> _showLocked(BuildContext context) =>
+      showPaidContentSheet(context, lessonId: widget.lectureId);
 
   Future<void> _openLink(BuildContext context, String url) async {
     await openFileInApp(context, url);
@@ -1456,6 +1467,22 @@ class _AttachmentsTabState extends ConsumerState<_AttachmentsTab> {
       } else {
         AppToast.showError(context, 'تعذر حفظ الملف على الجهاز');
       }
+    } on dio.DioException catch (e) {
+      final mapped = classifyContentError(e);
+      if (mounted) {
+        AppToast.showError(
+          context,
+          mapped is ContentLockedException
+              ? mapped.displayMessage
+              : mapped is ContentLinkExpiredException
+              ? 'انتهت صلاحية الرابط، افتح الملف من التطبيق تاني'
+              : 'تعذر تحميل الملف',
+        );
+      }
+      // An expired link: reload the lecture so the next tap gets a fresh one.
+      if (mapped is ContentLinkExpiredException) {
+        ref.invalidate(lectureDetailsProvider(widget.lectureId));
+      }
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('[AttachmentsTab] $key download failed: $e\n$stackTrace');
@@ -1488,8 +1515,11 @@ class _AttachmentTile extends StatelessWidget {
     required this.onView,
     required this.onDownload,
     this.subtitle,
+    this.locked = false,
   });
 
+  /// Locked for this student: "عرض" becomes a lock button.
+  final bool locked;
   final IconData icon;
   final String title;
   final String? subtitle;
@@ -1563,8 +1593,11 @@ class _AttachmentTile extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onView,
-                  icon: const Icon(Icons.visibility_rounded, size: 18),
-                  label: const Text('عرض'),
+                  icon: Icon(
+                    locked ? Icons.lock_rounded : Icons.visibility_rounded,
+                    size: 18,
+                  ),
+                  label: Text(locked ? 'مقفول' : 'عرض'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textOnDark,
                     side: BorderSide(

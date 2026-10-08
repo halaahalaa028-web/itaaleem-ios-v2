@@ -143,8 +143,7 @@ final lectureHasExamsProvider = FutureProvider.autoDispose.family<bool, int>((
   lectureId,
 ) async {
   try {
-    return (await ref.watch(lectureExamsProvider(lectureId).future))
-        .isNotEmpty;
+    return (await ref.watch(lectureExamsProvider(lectureId).future)).isNotEmpty;
   } catch (_) {
     return false;
   }

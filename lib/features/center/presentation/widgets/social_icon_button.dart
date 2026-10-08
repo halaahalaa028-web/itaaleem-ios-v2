@@ -2,6 +2,7 @@ import 'package:itaaleem/app/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 import 'package:itaaleem/core/theme/app_palette.dart';
+
 class _SocialPlatform {
   const _SocialPlatform({
     required this.icon,

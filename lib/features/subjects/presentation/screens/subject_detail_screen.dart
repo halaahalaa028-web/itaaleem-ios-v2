@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:itaaleem/core/utils/open_file_in_app.dart';
+import 'package:itaaleem/features/subjects/presentation/utils/protected_file_open.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:itaaleem/app/router/app_router.dart';
-import 'package:itaaleem/app/router/route_args.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
@@ -99,10 +98,12 @@ class _RealSubjectDetail extends ConsumerWidget {
       loading: () => const SubjectDetailSkeleton(),
       error: (error, _) => Scaffold(
         appBar: AppBar(title: const Text('المادة')),
-        body: ErrorView(
-          message: failureOf(error).message,
-          retryLabel: 'إعادة المحاولة',
-          onRetry: () => ref.invalidate(subjectDetailsProvider(subjectId)),
+        body: AppBackground(
+          child: ErrorView(
+            message: failureOf(error).message,
+            retryLabel: 'إعادة المحاولة',
+            onRetry: () => ref.invalidate(subjectDetailsProvider(subjectId)),
+          ),
         ),
       ),
       data: (subject) => _RealSubjectBody(subject: subject),
@@ -192,74 +193,81 @@ class _RealSubjectBody extends ConsumerWidget {
     final targetIndex = target == null ? -1 : lessons.indexOf(target);
 
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () => _refresh(ref),
-        edgeOffset: kToolbarHeight + MediaQuery.paddingOf(context).top,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SubjectDetailHeader(
-              subjectId: _id,
-              title: subject.name,
-              description: subject.description,
-              imageUrl: iconUrl,
-              teacher: _TeacherLine(subjectId: _id),
-              stats: [
-                SubjectHeaderStat(
-                  icon: Icons.play_circle_outline_rounded,
-                  label: '$lessonsCount محاضرة',
-                ),
-                if (filesCount > 0)
-                  SubjectHeaderStat(
-                    icon: Icons.folder_outlined,
-                    label: '$filesCount ملف',
-                  ),
-              ],
-              continueLabel: summary.hasStarted
-                  ? 'متابعة التعلم'
-                  : 'ابدأ التعلم',
-              continueCaption: target == null
-                  ? null
-                  : 'المحاضرة ${targetIndex + 1}: ${target.title}',
-              onContinue: target == null
-                  ? null
-                  : () => _openLesson(context, ref, target),
-              onRefresh: () => _refresh(ref),
-            ),
-            if (lessons.isNotEmpty)
-              _Padded(
-                child: progressAsync.hasValue
-                    ? SubjectProgressCard(
-                        completed: summary.completedCount,
-                        total: summary.total,
-                        started: summary.hasStarted,
-                      )
-                    : const _ProgressCardPlaceholder(),
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: () => _refresh(ref),
+          edgeOffset: kToolbarHeight + MediaQuery.paddingOf(context).top,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SubjectDetailHeader(
+                subjectId: _id,
+                title: subject.name,
+                description: subject.description,
+                imageUrl: iconUrl,
+                teacher: _TeacherLine(subjectId: _id),
+                stats: [
+                  if (lessonsCount > 0)
+                    SubjectHeaderStat(
+                      icon: Icons.play_circle_outline_rounded,
+                      label: '$lessonsCount محاضرة',
+                    ),
+                  if (subject.examsCount > 0)
+                    SubjectHeaderStat(
+                      icon: Icons.quiz_outlined,
+                      label: '${subject.examsCount} امتحان',
+                    ),
+                  if (filesCount > 0)
+                    SubjectHeaderStat(
+                      icon: Icons.folder_outlined,
+                      label: '$filesCount ملف',
+                    ),
+                ],
+                continueLabel: summary.hasStarted
+                    ? 'متابعة التعلم'
+                    : 'ابدأ التعلم',
+                continueCaption: target == null
+                    ? null
+                    : 'المحاضرة ${targetIndex + 1}: ${target.title}',
+                onContinue: target == null
+                    ? null
+                    : () => _openLesson(context, ref, target),
+                onRefresh: () => _refresh(ref),
               ),
-            if (lessons.isNotEmpty && teachers.isEmpty)
-              SubjectSection(
-                title: 'المحاضرات',
-                icon: Icons.play_lesson_rounded,
-                itemCount: lessons.length,
-                itemBuilder: (context, index) =>
-                    lectureTile(context, index, lessons[index]),
-              ),
-            // One collapsible section per doctor, then "محاضرات عامة".
-            if (lessons.isNotEmpty && teachers.isNotEmpty)
-              for (final group in groupLessonsByTeacher(lessons, teachers))
-                TeacherLecturesSection(
-                  key: ValueKey(
-                    'teacher-${group.teacher?.id ?? group.teacher?.name}',
-                  ),
-                  group: group,
-                  itemBuilder: lectureTile,
+              if (lessons.isNotEmpty)
+                _Padded(
+                  child: progressAsync.hasValue
+                      ? SubjectProgressCard(
+                          completed: summary.completedCount,
+                          total: summary.total,
+                          started: summary.hasStarted,
+                        )
+                      : const _ProgressCardPlaceholder(),
                 ),
-            _RealFilesSection(subjectId: _id),
-            // Exams now live inside each lecture (LectureExamsSection).
-            if (lessons.isEmpty)
-              const _Padded(child: _NoContentNote()),
-            const _BottomSpacer(),
-          ],
+              if (lessons.isNotEmpty && teachers.isEmpty)
+                SubjectSection(
+                  title: 'المحاضرات',
+                  icon: Icons.play_lesson_rounded,
+                  itemCount: lessons.length,
+                  itemBuilder: (context, index) =>
+                      lectureTile(context, index, lessons[index]),
+                ),
+              // One collapsible section per doctor, then "محاضرات عامة".
+              if (lessons.isNotEmpty && teachers.isNotEmpty)
+                for (final group in groupLessonsByTeacher(lessons, teachers))
+                  TeacherLecturesSection(
+                    key: ValueKey(
+                      'teacher-${group.teacher?.id ?? group.teacher?.name}',
+                    ),
+                    group: group,
+                    itemBuilder: lectureTile,
+                  ),
+              _RealFilesSection(subjectId: _id),
+              // Exams now live inside each lecture (LectureExamsSection).
+              if (lessons.isEmpty) const _Padded(child: _NoContentNote()),
+              const _BottomSpacer(),
+            ],
+          ),
         ),
       ),
     );
@@ -353,27 +361,6 @@ class _RealFilesSection extends ConsumerWidget {
 
   final int subjectId;
 
-  Future<void> _open(BuildContext context, SubjectAttachment file) async {
-    if (file.isPdf) {
-      await context.push<void>(
-        lessonPdfPath,
-        extra: LessonPdfArgs(
-          title: file.name,
-          pdfUrl: file.url,
-          downloadable: file.isDownloadable,
-        ),
-      );
-      return;
-    }
-    await openFileInApp(
-      context,
-      file.url,
-      title: file.name,
-      type: file.type,
-      downloadable: file.isDownloadable,
-    );
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final attachmentsAsync = ref.watch(attachmentsProvider(subjectId));
@@ -399,9 +386,10 @@ class _RealFilesSection extends ConsumerWidget {
                 name: file.name,
                 type: file.type ?? (file.isPdf ? 'PDF' : null),
                 sizeLabel: file.sizeLabel,
+                locked: file.isLocked,
               ),
-              onOpen: () => _open(context, file),
-              onDownload: !file.isDownloadable
+              onOpen: () => openAttachment(context, ref, file),
+              onDownload: !file.isDownloadable || file.isLocked
                   ? null
                   : file.isPdf
                   ? () => downloadPdf(
@@ -409,8 +397,9 @@ class _RealFilesSection extends ConsumerWidget {
                       ref,
                       url: file.url,
                       title: file.name,
+                      fileRef: file.ref,
                     )
-                  : () => _open(context, file),
+                  : () => openAttachment(context, ref, file),
             );
           },
         );
@@ -420,7 +409,8 @@ class _RealFilesSection extends ConsumerWidget {
 }
 
 /// A [LectureTile] marked "فيها امتحان" when the lecture has exams — from
-/// the lesson's own `exams_count`, else `GET /lectures/{id}/exams`.
+/// the lesson's own `exams_count` (embedded in `GET /subjects/{id}`); no
+/// per-lecture request.
 class _LectureTileWithExam extends ConsumerWidget {
   const _LectureTileWithExam({
     required this.lesson,
@@ -434,9 +424,7 @@ class _LectureTileWithExam extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final hasExam = lesson.examsCount != null
-        ? lesson.examsCount! > 0
-        : ref.watch(lectureHasExamsProvider(lesson.id)).valueOrNull ?? false;
+    final hasExam = (lesson.examsCount ?? 0) > 0;
     return LectureTile(
       data: LectureTileData(
         number: data.number,
@@ -672,7 +660,9 @@ class _DemoSubjectDetail extends StatelessWidget {
     if (subject == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text('المادة غير موجودة')),
+        body: AppBackground(
+          child: const Center(child: Text('المادة غير موجودة')),
+        ),
       );
     }
     final current = _demoLectures.firstWhere(
@@ -680,73 +670,75 @@ class _DemoSubjectDetail extends StatelessWidget {
     );
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SubjectDetailHeader(
-            subjectId: subject.id,
-            title: subject.name,
-            description: subject.description,
-            teacher: Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.xs),
-              child: Row(
-                children: [
-                  const Icon(Icons.person_rounded, size: 16),
-                  const SizedBox(width: AppSpacing.xs),
-                  Flexible(
-                    child: Text(
-                      subject.teacher,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w600,
+      body: AppBackground(
+        child: CustomScrollView(
+          slivers: [
+            SubjectDetailHeader(
+              subjectId: subject.id,
+              title: subject.name,
+              description: subject.description,
+              teacher: Padding(
+                padding: const EdgeInsets.only(top: AppSpacing.xs),
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_rounded, size: 16),
+                    const SizedBox(width: AppSpacing.xs),
+                    Flexible(
+                      child: Text(
+                        subject.teacher,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+              stats: [
+                SubjectHeaderStat(
+                  icon: Icons.play_circle_outline_rounded,
+                  label: '${subject.lecturesTotal} محاضرة',
+                ),
+                SubjectHeaderStat(
+                  icon: Icons.folder_outlined,
+                  label: '${_demoFiles.length} ملف',
+                ),
+              ],
+              continueCaption: 'المحاضرة ${current.number}: ${current.title}',
+              onContinue: () => _showDemoNote(context),
+            ),
+            _Padded(
+              child: SubjectProgressCard(
+                completed: subject.lecturesDone,
+                total: subject.lecturesTotal,
+                started: subject.progress > 0,
               ),
             ),
-            stats: [
-              SubjectHeaderStat(
-                icon: Icons.play_circle_outline_rounded,
-                label: '${subject.lecturesTotal} محاضرة',
+            SubjectSection(
+              title: 'المحاضرات',
+              icon: Icons.play_lesson_rounded,
+              itemCount: _demoLectures.length,
+              itemBuilder: (context, index) => LectureTile(
+                data: _demoLectures[index],
+                onTap: () => _showDemoNote(context),
               ),
-              SubjectHeaderStat(
-                icon: Icons.folder_outlined,
-                label: '${_demoFiles.length} ملف',
+            ),
+            SubjectSection(
+              title: 'الملفات',
+              icon: Icons.folder_rounded,
+              itemCount: _demoFiles.length,
+              itemBuilder: (context, index) => AttachmentTile(
+                data: _demoFiles[index],
+                onOpen: () => _showDemoNote(context),
               ),
-            ],
-            continueCaption: 'المحاضرة ${current.number}: ${current.title}',
-            onContinue: () => _showDemoNote(context),
-          ),
-          _Padded(
-            child: SubjectProgressCard(
-              completed: subject.lecturesDone,
-              total: subject.lecturesTotal,
-              started: subject.progress > 0,
             ),
-          ),
-          SubjectSection(
-            title: 'المحاضرات',
-            icon: Icons.play_lesson_rounded,
-            itemCount: _demoLectures.length,
-            itemBuilder: (context, index) => LectureTile(
-              data: _demoLectures[index],
-              onTap: () => _showDemoNote(context),
-            ),
-          ),
-          SubjectSection(
-            title: 'الملفات',
-            icon: Icons.folder_rounded,
-            itemCount: _demoFiles.length,
-            itemBuilder: (context, index) => AttachmentTile(
-              data: _demoFiles[index],
-              onOpen: () => _showDemoNote(context),
-            ),
-          ),
-          const _BottomSpacer(),
-        ],
+            const _BottomSpacer(),
+          ],
+        ),
       ),
     );
   }

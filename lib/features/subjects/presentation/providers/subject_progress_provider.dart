@@ -1,50 +1,50 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/providers/cache_for.dart';
-import 'package:itaaleem/features/courses/data/datasources/courses_remote_data_source.dart';
+import 'package:itaaleem/core/network/api_endpoints.dart';
+import 'package:itaaleem/core/network/dio_client.dart';
 import 'package:itaaleem/features/courses/domain/entities/lecture_details.dart';
 import 'package:itaaleem/features/subjects/domain/entities/subject.dart';
-import 'package:itaaleem/features/subjects/presentation/providers/subjects_providers.dart';
 
-/// Each lesson's saved playback progress (`GET /lessons/{id}/progress`, the
-/// same call the player makes for "متابعة من…؟"), keyed by lesson id —
-/// there's no per-subject progress endpoint, so this fans out per lesson.
-///
-/// Only lessons whose video URL was actually sent are asked about (a
-/// withheld URL means the student can't have watched it), a few at a time.
-/// Best-effort: a lesson whose call fails is simply left out.
+/// Each lesson's saved playback progress, keyed by lesson id — one
+/// `GET /subjects/{id}/progress` for the whole subject (it used to fan out
+/// a `/lessons/{id}/progress` call per lecture, which tripped the rate
+/// limit on subjects with many lectures).
 final subjectLessonsProgressProvider = FutureProvider.autoDispose
-    .family<Map<int, LectureProgress>, int>((ref, subjectId) async {
-      final subject = await ref.watch(subjectDetailsProvider(subjectId).future);
+    .family<Map<int, LectureProgress>, int>((ref, subjectId) {
       return ref.cached(() async {
-        final source = ref.read(coursesRemoteDataSourceProvider);
-        final ids = [
-          for (final l in subject.lessons)
-            if (l.canPlayVideo) l.id,
-        ];
-        final result = <int, LectureProgress>{};
-        const batch = 6;
-        for (var i = 0; i < ids.length; i += batch) {
-          final chunk = ids.skip(i).take(batch);
-          final entries = await Future.wait(
-            chunk.map((id) async {
-              try {
-                return MapEntry(id, await source.getLectureProgress(id));
-              } catch (e) {
-                if (kDebugMode) {
-                  debugPrint('[subjectLessonsProgress] lesson $id: $e');
-                }
-                return null;
-              }
-            }),
-          );
-          for (final e in entries) {
-            if (e != null) result[e.key] = e.value;
-          }
-        }
-        return result;
+        final response = await ref
+            .read(dioClientProvider)
+            .get<dynamic>(ApiEndpoints.subjectProgress(subjectId));
+        return parseSubjectProgress(response.data);
       }, duration: const Duration(minutes: 1));
     });
+
+/// `{progress: {"52": {watched_seconds, total_seconds, percentage,
+/// completed | is_completed}}}` (also accepts it nested under `data`).
+Map<int, LectureProgress> parseSubjectProgress(Object? body) {
+  Object? raw = body;
+  if (raw is Map && raw['data'] is Map) raw = raw['data'];
+  if (raw is Map && raw['progress'] is Map) raw = raw['progress'];
+  if (raw is! Map) return const {};
+  int toInt(Object? v) => num.tryParse('${v ?? ''}')?.toInt() ?? 0;
+  final result = <int, LectureProgress>{};
+  raw.forEach((key, value) {
+    final id = int.tryParse('$key');
+    if (id == null || value is! Map) return;
+    result[id] = LectureProgress(
+      positionSeconds: toInt(value['watched_seconds'] ?? value['position']),
+      durationSeconds: toInt(value['total_seconds'] ?? value['duration']),
+      progressPercentage:
+          num.tryParse('${value['percentage'] ?? ''}')?.toDouble() ?? 0,
+      isCompleted: value['completed'] == true || value['is_completed'] == true,
+    );
+  });
+  if (kDebugMode) {
+    debugPrint('[subjectLessonsProgress] ${result.length} lessons');
+  }
+  return result;
+}
 
 /// 0.0–1.0 watched fraction of one lesson; position/duration wins when both
 /// are known, since `progress_percentage` is reported on a 0–100 scale.

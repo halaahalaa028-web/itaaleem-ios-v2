@@ -3,7 +3,6 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:itaaleem/app/router/app_router.dart';
-import 'package:itaaleem/app/router/route_args.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/widgets/app_card.dart';
 import 'package:itaaleem/core/widgets/app_progress_bar.dart';
@@ -23,6 +22,7 @@ import 'package:itaaleem/features/home/presentation/providers/banners_provider.d
 import 'package:itaaleem/features/notifications/data/dummy_notifications.dart';
 import 'package:itaaleem/features/notifications/presentation/providers/notifications_providers.dart';
 import 'package:itaaleem/features/subjects/domain/entities/subject.dart';
+import 'package:itaaleem/features/subjects/presentation/providers/subject_progress_provider.dart';
 import 'package:itaaleem/features/subjects/presentation/providers/subjects_providers.dart';
 import 'package:itaaleem/features/subjects/presentation/screens/lesson_video_screen.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/lesson_access.dart';
@@ -30,6 +30,8 @@ import 'package:itaaleem/features/subjects/presentation/widgets/subject_icon.dar
 import 'package:flutter/foundation.dart';
 import 'package:itaaleem/features/subscriptions/presentation/widgets/subject_lock_gate.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/subjects/presentation/utils/protected_file_open.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/utils/youtube_utils.dart';
 import 'package:itaaleem/features/courses/presentation/widgets/players/player_selection_sheet.dart';
 import 'package:itaaleem/features/home/presentation/widgets/home_search_bar.dart';
@@ -261,6 +263,7 @@ class _JoinedHome extends ConsumerWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
+        backgroundColor: Colors.transparent,
         body: RefreshIndicator(
           edgeOffset: MediaQuery.paddingOf(context).top,
           onRefresh: () => refreshAll(ref),
@@ -294,87 +297,24 @@ class _JoinedHome extends ConsumerWidget {
                     AppSpacing.screenHorizontal,
                     0,
                   ),
-                  child: Container(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [
-                          HSLColor.fromColor(
-                                Theme.of(context).colorScheme.primary,
-                              )
-                              .withLightness(
-                                (HSLColor.fromColor(
-                                          Theme.of(context).colorScheme.primary,
-                                        ).lightness *
-                                        0.7)
-                                    .clamp(0.0, 1.0),
-                              )
-                              .toColor(),
-                          Theme.of(context).colorScheme.primary,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(AppRadius.xl),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'مرحباً $studentName 👋',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(
-                                      color: context.palette.onPrimary,
-                                    ),
-                              ),
-                              if (gradeName != null) ...[
-                                const SizedBox(height: AppSpacing.xs),
-                                Text(
-                                  gradeName,
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: context.palette.onPrimary
-                                            .withValues(alpha: 0.8),
-                                      ),
-                                ),
-                              ],
-                              const SizedBox(height: 2),
-                              Text(
-                                'مستعد تكمل رحلتك التعليمية؟',
-                                style: TextStyle(
-                                  fontFamily: 'Cairo',
-                                  fontSize: 13,
-                                  color: context.palette.onPrimary.withValues(
-                                    alpha: 0.9,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: context.palette.onPrimary.withValues(
-                              alpha: 0.16,
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.school_rounded,
-                            size: 30,
-                            color: context.palette.onPrimary,
-                          ),
-                        ),
-                      ],
+                  child: Reveal(
+                    child: _WelcomeCard(
+                      studentName: studentName,
+                      gradeName: gradeName,
+                      center: center,
+                      unreadCount: unreadCount,
+                      isDemo: isDemo,
                     ),
                   ),
                 ),
-                _BannersSection(onStartTap: onSubjectsTap, isDemo: isDemo),
+                if (!isDemo) const _ContinueWatchingCard(),
+                Reveal(
+                  index: 2,
+                  child: _BannersSection(
+                    onStartTap: onSubjectsTap,
+                    isDemo: isDemo,
+                  ),
+                ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(
                     AppSpacing.screenHorizontal,
@@ -399,15 +339,23 @@ class _JoinedHome extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 Expanded(
-                                  child: _QuickServiceTile(
-                                    service: quickServices[i],
+                                  child: Reveal(
+                                    index: 3 + i,
+                                    child: _QuickServiceTile(
+                                      service: quickServices[i],
+                                      index: i,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: AppSpacing.md),
                                 Expanded(
                                   child: i + 1 < quickServices.length
-                                      ? _QuickServiceTile(
-                                          service: quickServices[i + 1],
+                                      ? Reveal(
+                                          index: 4 + i,
+                                          child: _QuickServiceTile(
+                                            service: quickServices[i + 1],
+                                            index: i + 1,
+                                          ),
                                         )
                                       : const SizedBox.shrink(),
                                 ),
@@ -907,111 +855,76 @@ class _StudyBanner extends StatelessWidget {
   }
 }
 
-class _QuickServiceTile extends StatefulWidget {
-  const _QuickServiceTile({required this.service});
+class _QuickServiceTile extends StatelessWidget {
+  const _QuickServiceTile({required this.service, required this.index});
 
   final _QuickService service;
 
-  @override
-  State<_QuickServiceTile> createState() => _QuickServiceTileState();
-}
-
-class _QuickServiceTileState extends State<_QuickServiceTile>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 100),
-    lowerBound: 0.95,
-    upperBound: 1.0,
-    value: 1.0,
-  );
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  /// Picks the tile's accent so neighbouring tiles get different colors.
+  final int index;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return ScaleTransition(
-      scale: _controller,
-      child: GestureDetector(
-        onTapDown: (_) => _controller.reverse(),
-        onTapUp: (_) => _controller.forward(),
-        onTapCancel: () => _controller.forward(),
-        child: AppCard(
-          onTap: widget.service.onTap,
-          padding: const EdgeInsets.all(AppSpacing.base),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+    final accents = [scheme.primary, scheme.tertiary, scheme.secondary];
+    final accent = accents[index % accents.length];
+    return AppCard(
+      onTap: service.onTap,
+      padding: const EdgeInsets.all(AppSpacing.base),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: scheme.primary.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      widget.service.icon,
-                      size: 22,
-                      color: scheme.primary,
-                    ),
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: AlignmentDirectional.topStart,
+                    end: AlignmentDirectional.bottomEnd,
+                    colors: [
+                      accent.withValues(alpha: 0.2),
+                      accent.withValues(alpha: 0.08),
+                    ],
                   ),
-                  const Spacer(),
-                  if (widget.service.badge > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.sm,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: scheme.error,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        widget.service.badge > 99
-                            ? '99+'
-                            : '${widget.service.badge}',
-                        style: TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onError,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                widget.service.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  borderRadius: BorderRadius.circular(14),
                 ),
+                child: Icon(service.icon, size: 23, color: accent),
               ),
-              Text(
-                widget.service.description,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 11,
-                  color: scheme.onSurfaceVariant,
+              const Spacer(),
+              if (service.badge > 0)
+                StatusPill(
+                  label: service.badge > 99 ? '99+' : '${service.badge}',
+                  color: scheme.error,
+                  filled: true,
+                  dense: true,
                 ),
-              ),
             ],
           ),
-        ),
+          const SizedBox(height: 10),
+          Text(
+            service.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            service.description,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 11,
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1199,10 +1112,13 @@ class _RealSubjectsSection extends ConsumerWidget {
             )
           : Column(
               children: [
-                for (final subject in subjects.take(3))
+                for (final (i, subject) in subjects.take(3).indexed)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: _RealSubjectRow(subject: subject),
+                    child: Reveal(
+                      index: i,
+                      child: _RealSubjectRow(subject: subject),
+                    ),
                   ),
               ],
             ),
@@ -1354,15 +1270,9 @@ class _RealLectureCard extends ConsumerWidget {
           playerKind: playerKind,
         ),
       );
-    } else if (lesson.hasPdf) {
-      context.push<void>(
-        lessonPdfPath,
-        extra: LessonPdfArgs(
-          title: lesson.title,
-          pdfUrl: lesson.pdfUrl,
-          downloadable: lesson.isDownloadable,
-        ),
-      );
+    } else if (lesson.hasPdfFile) {
+      // Locked → lock sheet (and any cached copy dropped); else the viewer.
+      await openLessonPdf(context, lesson);
     }
   }
 
@@ -1373,7 +1283,7 @@ class _RealLectureCard extends ConsumerWidget {
       width: 200,
       child: AppCard(
         padding: EdgeInsets.zero,
-        onTap: (lesson.hasVideo || lesson.hasPdf)
+        onTap: (lesson.hasVideo || lesson.hasPdfFile)
             ? () => _open(context, locked: locked)
             : null,
         child: Column(
@@ -1588,4 +1498,253 @@ Future<void> _callCenter(
       ),
     ),
   );
+}
+
+/// Brand-gradient welcome card: greeting, grade, the center's logo and a row
+/// of count-up quick stats built from data the home already loads.
+class _WelcomeCard extends ConsumerWidget {
+  const _WelcomeCard({
+    required this.studentName,
+    required this.gradeName,
+    required this.center,
+    required this.unreadCount,
+    required this.isDemo,
+  });
+
+  final String studentName;
+  final String? gradeName;
+  final CenterModel? center;
+  final int unreadCount;
+  final bool isDemo;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    final subjects = isDemo
+        ? null
+        : ref.watch(subjectsListProvider).valueOrNull;
+    final subjectsCount = isDemo ? _dummySubjects.length : subjects?.length;
+    final lessonsCount = subjects?.fold<int>(
+      0,
+      (sum, s) => sum + s.lessonsCount,
+    );
+    final logo = center?.logo;
+
+    return GlassCard(
+      gradient: DesignTokens.brandGradient(scheme),
+      radius: DesignTokens.radiusHero,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'مرحباً $studentName 👋',
+                      style: text.titleLarge?.copyWith(
+                        color: scheme.onPrimary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    if (gradeName != null) ...[
+                      const SizedBox(height: AppSpacing.xs),
+                      StatusPill(
+                        label: gradeName!,
+                        icon: Icons.school_rounded,
+                        color: scheme.onPrimary,
+                        dense: true,
+                      ),
+                    ],
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      'مستعد تكمل رحلتك التعليمية؟',
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onPrimary.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Container(
+                width: 64,
+                height: 64,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: scheme.onPrimary.withValues(alpha: 0.22),
+                  shape: BoxShape.circle,
+                ),
+                child: ClipOval(
+                  child: ColoredBox(
+                    color: scheme.surface,
+                    child: (logo == null || logo.isEmpty)
+                        ? Icon(
+                            Icons.school_rounded,
+                            size: 30,
+                            color: scheme.primary,
+                          )
+                        : CachedNetworkImage(
+                            imageUrl: logo,
+                            memCacheWidth: 256,
+                            fit: BoxFit.cover,
+                            filterQuality: FilterQuality.high,
+                            errorWidget: (_, _, _) => Icon(
+                              Icons.school_rounded,
+                              size: 30,
+                              color: scheme.primary,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (subjectsCount != null) ...[
+            const SizedBox(height: AppSpacing.base),
+            Row(
+              children: [
+                Expanded(
+                  child: StatTile(
+                    icon: Icons.menu_book_rounded,
+                    value: subjectsCount,
+                    label: 'مادة',
+                    onGradient: true,
+                  ),
+                ),
+                if (lessonsCount != null && lessonsCount > 0) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: StatTile(
+                      icon: Icons.play_lesson_rounded,
+                      value: lessonsCount,
+                      label: 'محاضرة',
+                      onGradient: true,
+                    ),
+                  ),
+                ],
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: StatTile(
+                    icon: Icons.notifications_rounded,
+                    value: unreadCount,
+                    label: 'إشعار جديد',
+                    onGradient: true,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "كمّل من حيث وقفت": the lesson in progress in the first subject, from the
+/// same progress data the subject screen uses. Hidden when nothing has been
+/// started yet (or while it loads / if it fails).
+class _ContinueWatchingCard extends ConsumerWidget {
+  const _ContinueWatchingCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final subjects = ref.watch(subjectsListProvider).valueOrNull;
+    if (subjects == null || subjects.isEmpty) return const SizedBox.shrink();
+    final subjectId = subjects.first.id;
+    final subject = ref.watch(subjectDetailsProvider(subjectId)).valueOrNull;
+    final progress = ref
+        .watch(subjectLessonsProgressProvider(subjectId))
+        .valueOrNull;
+    if (subject == null || progress == null) return const SizedBox.shrink();
+    final summary = SubjectProgressSummary.from(subject.lessons, progress);
+    final lessonId = summary.lastWatchedId;
+    final lesson = summary.continueLesson;
+    if (!summary.hasStarted || lesson == null) return const SizedBox.shrink();
+    final fraction = summary.inProgress[lessonId] ?? 0;
+
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.screenHorizontal,
+        AppSpacing.base,
+        AppSpacing.screenHorizontal,
+        0,
+      ),
+      child: Reveal(
+        index: 1,
+        child: GlassCard(
+          onTap: () => context.push('/subject-detail/$subjectId'),
+          borderColor: scheme.primary.withValues(alpha: 0.35),
+          padding: const EdgeInsets.all(AppSpacing.base),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: DesignTokens.brandGradient(scheme),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  size: 30,
+                  color: scheme.onPrimary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'كمّل من حيث وقفت',
+                      style: text.labelMedium?.copyWith(
+                        color: scheme.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      lesson.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      subject.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (fraction > 0) ...[
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(99),
+                        child: LinearProgressIndicator(
+                          value: fraction,
+                          minHeight: 5,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              Icon(Icons.chevron_left_rounded, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

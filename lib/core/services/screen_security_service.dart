@@ -4,7 +4,11 @@ import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/services.dart';
 
 /// A capture-related event reported by the native side.
-enum SecurityEvent { screenRecordingStarted, screenRecordingStopped, screenshot }
+enum SecurityEvent {
+  screenRecordingStarted,
+  screenRecordingStopped,
+  screenshot,
+}
 
 /// Bridges to the native screen-protection code over one MethodChannel
 /// (`MainActivity.kt` / `AppDelegate.swift`):

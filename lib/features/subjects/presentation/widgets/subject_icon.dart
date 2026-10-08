@@ -82,11 +82,7 @@ class SubjectIcon extends StatelessWidget {
       decoration: BoxDecoration(color: color.withValues(alpha: 0.15)),
       child: Center(
         child: loading
-            ? SizedBox(
-                width: iconSize * 0.7,
-                height: iconSize * 0.7,
-                child: CircularProgressIndicator(strokeWidth: 2, color: color),
-              )
+            ? Icon(_icon, color: color.withValues(alpha: 0.4), size: iconSize)
             : Icon(_icon, color: color, size: iconSize),
       ),
     );

@@ -68,7 +68,10 @@ class CenterMembershipController extends AsyncNotifier<CenterMembership?> {
       final prefs = await SharedPreferences.getInstance();
       final centerId = prefs.getInt(_centerIdKey);
       if (centerId == null) return null;
-      return CenterMembership(centerId: centerId, gradeId: prefs.getInt(_gradeIdKey));
+      return CenterMembership(
+        centerId: centerId,
+        gradeId: prefs.getInt(_gradeIdKey),
+      );
     }
 
     if (profileCenterId == null) {
@@ -121,10 +124,7 @@ class CenterMembershipController extends AsyncNotifier<CenterMembership?> {
     } else {
       await prefs.remove(_realGradeIdKey);
     }
-    return CenterMembership(
-      centerId: profileCenterId,
-      gradeId: profileGradeId,
-    );
+    return CenterMembership(centerId: profileCenterId, gradeId: profileGradeId);
   }
 
   /// Joins (or, called again with a different grade, switches) a center.
@@ -395,7 +395,8 @@ final joinedCenterProvider = Provider<CenterModel?>((ref) {
 
   if (fetched == null) {
     // Only trust the profile's center while it matches the joined one.
-    if (membership != null && fromProfile != null &&
+    if (membership != null &&
+        fromProfile != null &&
         fromProfile.id != membership.centerId) {
       return null;
     }

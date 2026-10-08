@@ -26,7 +26,9 @@ class UpdateRepositoryImpl implements UpdateRepository {
   Failure _failureOf(DioException e) {
     final error = e.error;
     if (error is Failure) return error;
-    return const NetworkFailure('تعذر الاتصال، تحقق من الإنترنت وحاول مرة أخرى');
+    return const NetworkFailure(
+      'تعذر الاتصال، تحقق من الإنترنت وحاول مرة أخرى',
+    );
   }
 }
 

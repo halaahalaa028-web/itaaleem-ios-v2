@@ -99,6 +99,15 @@ class ExamsRemoteDataSource {
   /// `GET /courses/{subject}/exams` when that comes back empty or fails.
   Future<List<ExamSummaryModel>> getSubjectExams(int subjectId) async {
     try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.subjectExams(subjectId),
+      );
+      return _parseSummaries(_extractList(response.data, 'exams'));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 429) rethrow;
+      if (kDebugMode) debugPrint('>>> subjects/$subjectId/exams failed: $e');
+    }
+    try {
       final exams = await getExams(subjectId: subjectId);
       if (exams.isNotEmpty) return exams;
     } on DioException catch (e) {

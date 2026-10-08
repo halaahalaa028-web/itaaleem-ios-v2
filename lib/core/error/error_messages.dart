@@ -38,7 +38,9 @@ class ErrorMessages {
         lower.contains('incorrect')) {
       return 'رقم الهاتف أو كلمة المرور غلط';
     }
-    final taken = RegExp(r'^the (.+?) has already been taken').firstMatch(lower);
+    final taken = RegExp(
+      r'^the (.+?) has already been taken',
+    ).firstMatch(lower);
     if (taken != null) {
       final f = taken.group(1)!;
       return f == 'mobile' || f == 'phone'
@@ -50,8 +52,9 @@ class ErrorMessages {
       final f = required.group(1)!;
       return f == 'password' ? 'كلمة المرور مطلوبة' : '${_field(f)} مطلوب';
     }
-    final atLeast = RegExp(r'^the (.+?) (?:field )?must be at least (\d+)')
-        .firstMatch(lower);
+    final atLeast = RegExp(
+      r'^the (.+?) (?:field )?must be at least (\d+)',
+    ).firstMatch(lower);
     if (atLeast != null) {
       return '${_field(atLeast.group(1)!)} يجب ألا يقل عن ${atLeast.group(2)} حروف';
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/fade_slide_in.dart';
 import 'package:itaaleem/core/widgets/app_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,41 +47,43 @@ class AssignmentsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('الواجبات')),
-      body: async.when(
-        loading: () => const SingleChildScrollView(
-          padding: EdgeInsets.all(AppSpacing.lg),
-          physics: NeverScrollableScrollPhysics(),
-          child: SkeletonList(count: 4),
-        ),
-        error: (error, _) => ErrorView(
-          message: failureOf(error).message,
-          retryLabel: 'إعادة المحاولة',
-          onRetry: refresh,
-        ),
-        data: (items) => RefreshIndicator(
-          onRefresh: refresh,
-          child: items.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: const [
-                    SizedBox(height: 80),
-                    EmptyState(
-                      message: 'مفيش واجبات حالياً',
-                      icon: Icons.assignment_rounded,
+      body: AppBackground(
+        child: async.when(
+          loading: () => const SingleChildScrollView(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            physics: NeverScrollableScrollPhysics(),
+            child: SkeletonList(count: 4),
+          ),
+          error: (error, _) => ErrorView(
+            message: failureOf(error).message,
+            retryLabel: 'إعادة المحاولة',
+            onRetry: refresh,
+          ),
+          data: (items) => RefreshIndicator(
+            onRefresh: refresh,
+            child: items.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 80),
+                      EmptyState(
+                        message: 'مفيش واجبات حالياً',
+                        icon: Icons.assignment_rounded,
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    itemCount: items.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AppSpacing.md),
+                    itemBuilder: (context, index) => FadeSlideIn.staggered(
+                      index: index,
+                      child: _AssignmentCard(assignment: items[index]),
                     ),
-                  ],
-                )
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(AppSpacing.lg),
-                  itemCount: items.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: AppSpacing.md),
-                  itemBuilder: (context, index) => FadeSlideIn.staggered(
-                    index: index,
-                    child: _AssignmentCard(assignment: items[index]),
                   ),
-                ),
+          ),
         ),
       ),
     );

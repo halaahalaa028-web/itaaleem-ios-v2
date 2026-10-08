@@ -164,6 +164,13 @@ final adminListProvider = AsyncNotifierProvider.autoDispose
       AdminListController.new,
     );
 
+/// `GET students/{id}/subscriptions` — all of a student's subscriptions.
+final centerStudentSubscriptionsProvider = FutureProvider.autoDispose
+    .family<List<AdminRecord>, int>(
+      (ref, id) =>
+          ref.watch(centerAdminRepositoryProvider).studentSubscriptions(id),
+    );
+
 /// After a create / update / delete: reloads every open list of [path]
 /// (any search / filter) plus the dashboard counters.
 void invalidateAdminSection(WidgetRef ref, String path) {
@@ -173,4 +180,17 @@ void invalidateAdminSection(WidgetRef ref, String path) {
   ref.invalidate(centerPendingRequestsProvider);
   ref.invalidate(centerLecturesBySubjectProvider);
   ref.invalidate(centerActivationCodesProvider);
+  ref.invalidate(centerStudentSubscriptionsProvider);
+}
+
+/// [invalidateAdminSection] from a captured container — safe after the
+/// triggering widget is gone.
+void invalidateAdminContainer(ProviderContainer c) {
+  c.invalidate(adminListProvider);
+  c.invalidate(centerDashboardProvider);
+  c.invalidate(centerAdminRecordProvider);
+  c.invalidate(centerPendingRequestsProvider);
+  c.invalidate(centerLecturesBySubjectProvider);
+  c.invalidate(centerActivationCodesProvider);
+  c.invalidate(centerStudentSubscriptionsProvider);
 }

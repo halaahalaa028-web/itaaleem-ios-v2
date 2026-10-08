@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design_tokens.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
-import 'package:itaaleem/core/theme/app_shadows.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 
 /// Standard surface card: 16px radius, a hairline border, 16px padding.
@@ -62,10 +62,13 @@ class _AppCardState extends State<AppCard> {
       gradient: widget.gradient,
       borderRadius: radius,
       border: Border.all(
-        color:
-            widget.borderColor ?? scheme.outlineVariant.withValues(alpha: 0.5),
+        color: widget.borderColor ?? DesignTokens.cardBorder(scheme),
       ),
-      boxShadow: widget.elevated ? AppShadows.md(scheme.shadow) : null,
+      // Soft, diffuse shadow on every card; stronger on featured ones.
+      boxShadow: DesignTokens.softShadow(
+        scheme,
+        strength: widget.elevated ? 1.2 : 0.55,
+      ),
     );
 
     if (!_interactive) {
@@ -77,9 +80,9 @@ class _AppCardState extends State<AppCard> {
     }
 
     return AnimatedScale(
-      scale: _pressed ? 0.98 : 1,
+      scale: _pressed && !DesignTokens.animationsOff(context) ? 0.97 : 1,
       duration: AppMotion.press,
-      curve: Curves.easeOut,
+      curve: AppMotion.standard,
       child: DecoratedBox(
         // Shadow outside the clip so it isn't cut off.
         decoration: BoxDecoration(

@@ -1,3 +1,4 @@
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'package:itaaleem/core/network/api_endpoints.dart';
 import 'package:itaaleem/features/subjects/domain/entities/subject.dart';
 import 'package:flutter/foundation.dart';
@@ -123,6 +124,11 @@ SubjectLesson subjectLessonFromJson(Map<String, dynamic> json) {
     hasVideoFlag: _flag(json['has_video']),
     sortOrder: int.tryParse(json['sort_order']?.toString() ?? '') ?? 0,
     isDownloadable: _flag(json['is_downloadable']) ?? false,
+    isLockedFlag: _flag(json['is_locked']),
+    hasFileFlag: _flag(json['has_file']),
+    pdfDownloadUrl: json['download_url']?.toString(),
+    pdfOpenUrl: json['open_url']?.toString(),
+    pdfUrlExpiresAt: parseExpiry(json['url_expires_at']),
   );
   if (kDebugMode) {
     debugPrint('>>> lesson data: $json');
@@ -196,17 +202,27 @@ SubjectAttachment subjectAttachmentFromJson(Map<String, dynamic> json) {
       (json['url'] ?? json['file_url'] ?? json['path'] ?? json['file'])
           as String?;
   final type =
-      (json['type'] ?? json['extension'] ?? json['mime_type']) as String?;
+      (json['type'] ??
+              json['file_type'] ??
+              json['extension'] ??
+              json['mime_type'])
+          as String?;
   return SubjectAttachment(
     id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
     name:
-        (json['name'] ?? json['title'] ?? json['filename']) as String? ?? 'ملف',
+        (json['name'] ?? json['title'] ?? json['filename'] ?? json['file_name'])
+            ?.toString() ??
+        'ملف',
     url: ApiEndpoints.mediaUrl(url) ?? url ?? '',
     sizeLabel: _sizeLabelOf(
       json['size'] ?? json['size_label'] ?? json['file_size'],
     ),
     type: type?.split('/').last.toUpperCase(),
     isDownloadable: _flag(json['is_downloadable']) ?? false,
+    isLocked: _flag(json['is_locked']) ?? false,
+    source: json['source']?.toString(),
+    downloadUrl: json['download_url']?.toString(),
+    expiresAt: parseExpiry(json['url_expires_at']),
     lessonId: int.tryParse(
       (json['lesson_id'] ??
                   json['lecture_id'] ??

@@ -23,9 +23,11 @@ import 'package:shelf_router/shelf_router.dart';
 /// on screen — [start] binds an OS-assigned loopback-only port, [stop]
 /// closes it. Safe to call [start] again after [stop].
 class LocalRangeServer {
-  LocalRangeServer({required OfflineDatabase db, required EncryptionManager encryption})
-    : _db = db,
-      _encryption = encryption;
+  LocalRangeServer({
+    required OfflineDatabase db,
+    required EncryptionManager encryption,
+  }) : _db = db,
+       _encryption = encryption;
 
   final OfflineDatabase _db;
   final EncryptionManager _encryption;
@@ -48,7 +50,11 @@ class LocalRangeServer {
     final router = Router()
       ..get('/video/<lessonId>', _handleVideo)
       ..head('/video/<lessonId>', _handleVideo);
-    _server = await shelf_io.serve(router.call, InternetAddress.loopbackIPv4, 0);
+    _server = await shelf_io.serve(
+      router.call,
+      InternetAddress.loopbackIPv4,
+      0,
+    );
   }
 
   Future<void> stop() async {
@@ -67,7 +73,8 @@ class LocalRangeServer {
   }
 
   Future<Response> _handleVideo(Request request) async {
-    if (request.url.queryParameters['t'] != _token) return Response.forbidden('forbidden');
+    if (request.url.queryParameters['t'] != _token)
+      return Response.forbidden('forbidden');
     final lessonId = int.tryParse(request.params['lessonId'] ?? '');
     if (lessonId == null) return Response.notFound('not found');
 
@@ -89,7 +96,9 @@ class LocalRangeServer {
     var start = 0;
     var end = totalSize - 1;
     if (rangeHeader != null) {
-      final match = RegExp(r'^bytes=(\d*)-(\d*)$').firstMatch(rangeHeader.trim());
+      final match = RegExp(
+        r'^bytes=(\d*)-(\d*)$',
+      ).firstMatch(rangeHeader.trim());
       if (match == null) {
         return Response(416, headers: {'Content-Range': 'bytes */$totalSize'});
       }
@@ -168,7 +177,9 @@ class LocalRangeServer {
         );
         // Trim to the requested range (only matters for the first/last chunk).
         final from = start > chunkStart ? start - chunkStart : 0;
-        final to = rangeEnd < chunkEnd ? rangeEnd - chunkStart : chunkEnd - chunkStart;
+        final to = rangeEnd < chunkEnd
+            ? rangeEnd - chunkStart
+            : chunkEnd - chunkStart;
         yield Uint8List.sublistView(decryptedChunk, from, to);
       }
     } finally {

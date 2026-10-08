@@ -12,7 +12,7 @@ import 'package:media_kit/media_kit.dart';
 void main() async {
   // Silence every debug log in release builds (logs can leak data and cost
   // time on busy screens).
-  if (kReleaseMode) debugPrint = (String? message, {int? wrapWidth}) {};
+  if (!kDebugMode) debugPrint = (String? message, {int? wrapWidth}) {};
   WidgetsFlutterBinding.ensureInitialized();
   // Keep the native launch screen up until the Flutter splash's logo is
   // decoded (SplashScreen releases it; it also self-releases after 1.5s).

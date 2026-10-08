@@ -1,9 +1,11 @@
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
+
 /// Shown once [centerDeactivatedProvider] flips to `true` — the student's
 /// joined center was deactivated server-side, so no content endpoint
 /// (`/subjects`, `/exams`, `/banners`, …) will serve anything until the
@@ -43,73 +45,77 @@ class _CenterDeactivatedScreenState
     return PopScope(
       canPop: false,
       child: Scaffold(
-        body: DecoratedBox(
-          decoration: BoxDecoration(gradient: context.palette.brandGradient),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsetsDirectional.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: context.palette.gold.withValues(alpha: 0.22),
-                      shape: BoxShape.circle,
+        body: AppBackground(
+          child: DecoratedBox(
+            decoration: BoxDecoration(gradient: context.palette.brandGradient),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsetsDirectional.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: context.palette.gold.withValues(alpha: 0.22),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.warning_amber_rounded,
+                        color: context.palette.gold,
+                        size: 52,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.warning_amber_rounded,
-                      color: context.palette.gold,
-                      size: 52,
+                    const SizedBox(height: 28),
+                    Text(
+                      'السنتر غير متاح حالياً',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: context.palette.onPrimary,
+                            fontWeight: FontWeight.w800,
+                          ),
                     ),
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    'السنتر غير متاح حالياً',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: context.palette.onPrimary,
-                      fontWeight: FontWeight.w800,
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'تواصل مع إدارة السنتر لمزيد من المعلومات.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: context.palette.onPrimary.withValues(alpha: 0.9),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'تواصل مع إدارة السنتر لمزيد من المعلومات.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: context.palette.onPrimary.withValues(alpha: 0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 36),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _loggingOut ? null : _logout,
-                      icon: _loggingOut
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                    const SizedBox(height: 36),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _loggingOut ? null : _logout,
+                        icon: _loggingOut
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: context.palette.onPrimary,
+                                ),
+                              )
+                            : Icon(
+                                Icons.logout_rounded,
                                 color: context.palette.onPrimary,
                               ),
-                            )
-                          : Icon(
-                              Icons.logout_rounded,
-                              color: context.palette.onPrimary,
-                            ),
-                      label: Text(
-                        'تسجيل خروج',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.onPrimary),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: context.palette.onPrimary),
+                        label: Text(
+                          'تسجيل خروج',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: context.palette.onPrimary),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: context.palette.onPrimary),
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

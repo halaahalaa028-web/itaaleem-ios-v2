@@ -76,7 +76,8 @@ class OfflineDownloadManager {
   final Set<int> _pausing = {};
 
   final _speedController = StreamController<DownloadSpeedSample>.broadcast();
-  Stream<DownloadSpeedSample> get downloadSpeedStream => _speedController.stream;
+  Stream<DownloadSpeedSample> get downloadSpeedStream =>
+      _speedController.stream;
 
   void dispose() {
     for (final token in _activeCancelTokens.values) {
@@ -129,7 +130,9 @@ class OfflineDownloadManager {
     } catch (e, stackTrace) {
       if (e is DioException && CancelToken.isCancel(e)) return;
       if (kDebugMode) {
-        debugPrint('[OfflineDownloadManager] startDownload($lessonId) failed: ${_describe(e)}\n$stackTrace');
+        debugPrint(
+          '[OfflineDownloadManager] startDownload($lessonId) failed: ${_describe(e)}\n$stackTrace',
+        );
       }
       await _db.updateByLessonId(
         lessonId,
@@ -169,7 +172,9 @@ class OfflineDownloadManager {
     } catch (e, stackTrace) {
       if (e is DioException && CancelToken.isCancel(e)) return;
       if (kDebugMode) {
-        debugPrint('[OfflineDownloadManager] resumeDownload($lessonId) failed: ${_describe(e)}\n$stackTrace');
+        debugPrint(
+          '[OfflineDownloadManager] resumeDownload($lessonId) failed: ${_describe(e)}\n$stackTrace',
+        );
       }
       await _db.updateByLessonId(
         lessonId,
@@ -318,7 +323,11 @@ class OfflineDownloadManager {
 
         while (buffer.length >= EncryptionManager.chunkSize) {
           final pending = buffer.takeBytes();
-          final chunkBytes = Uint8List.sublistView(pending, 0, EncryptionManager.chunkSize);
+          final chunkBytes = Uint8List.sublistView(
+            pending,
+            0,
+            EncryptionManager.chunkSize,
+          );
           final iv2 = _encryption.chunkIvFor(iv, chunkIndex).base64;
           final encrypted = await _encryption.encryptChunk(chunkBytes, iv2);
           await raf.writeFrom(encrypted);
@@ -436,7 +445,11 @@ class OfflineDownloadManager {
     );
   }
 
-  Future<_ByteSource> _openDirect(String url, int resumeFromBytes, CancelToken cancelToken) async {
+  Future<_ByteSource> _openDirect(
+    String url,
+    int resumeFromBytes,
+    CancelToken cancelToken,
+  ) async {
     final response = await _streamDio.get<ResponseBody>(
       url,
       options: Options(
@@ -479,7 +492,10 @@ class OfflineDownloadManager {
           final requestUrl = isAndroidClient
               ? url
               : url.replace(
-                  queryParameters: {...url.queryParameters, 'range': '$position-$last'},
+                  queryParameters: {
+                    ...url.queryParameters,
+                    'range': '$position-$last',
+                  },
                 );
           final response = await _streamDio.getUri<ResponseBody>(
             requestUrl,
@@ -523,7 +539,8 @@ class OfflineDownloadManager {
 
   String _friendlyError(Object error) {
     if (error is InsufficientStorageException) return error.toString();
-    if (error is _NoVideoSourceException) return 'لا يوجد فيديو قابل للتحميل لهذه المحاضرة';
+    if (error is _NoVideoSourceException)
+      return 'لا يوجد فيديو قابل للتحميل لهذه المحاضرة';
     if (error is DioException) {
       return 'فشل التحميل';
     }
@@ -564,7 +581,11 @@ class OfflineDownloadManager {
 }
 
 class _ByteSource {
-  const _ByteSource({required this.stream, required this.total, required this.honoredRange});
+  const _ByteSource({
+    required this.stream,
+    required this.total,
+    required this.honoredRange,
+  });
 
   final Stream<List<int>> stream;
 

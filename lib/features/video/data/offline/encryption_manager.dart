@@ -82,7 +82,9 @@ class EncryptionManager {
   Future<Uint8List> encryptChunk(Uint8List plainBytes, String iv) async {
     final keyBytes = (await getKey()).bytes;
     return Isolate.run(() {
-      final encrypter = Encrypter(AES(Key(keyBytes), mode: AESMode.ctr, padding: null));
+      final encrypter = Encrypter(
+        AES(Key(keyBytes), mode: AESMode.ctr, padding: null),
+      );
       return encrypter.encryptBytes(plainBytes, iv: IV.fromBase64(iv)).bytes;
     });
   }
@@ -90,9 +92,14 @@ class EncryptionManager {
   Future<Uint8List> decryptChunk(Uint8List encryptedBytes, String iv) async {
     final keyBytes = (await getKey()).bytes;
     return Isolate.run(() {
-      final encrypter = Encrypter(AES(Key(keyBytes), mode: AESMode.ctr, padding: null));
+      final encrypter = Encrypter(
+        AES(Key(keyBytes), mode: AESMode.ctr, padding: null),
+      );
       return Uint8List.fromList(
-        encrypter.decryptBytes(Encrypted(encryptedBytes), iv: IV.fromBase64(iv)),
+        encrypter.decryptBytes(
+          Encrypted(encryptedBytes),
+          iv: IV.fromBase64(iv),
+        ),
       );
     });
   }
@@ -109,7 +116,8 @@ class EncryptionManager {
     final result = (baseInt + BigInt.from(blockOffset)) % mod;
     final hex = result.toRadixString(16).padLeft(32, '0');
     return Uint8List.fromList([
-      for (var i = 0; i < 32; i += 2) int.parse(hex.substring(i, i + 2), radix: 16),
+      for (var i = 0; i < 32; i += 2)
+        int.parse(hex.substring(i, i + 2), radix: 16),
     ]);
   }
 }

@@ -15,10 +15,10 @@ import 'package:itaaleem/features/auth/presentation/providers/auth_controller.da
 import 'package:itaaleem/features/subjects/data/dummy_subjects.dart';
 import 'package:itaaleem/features/subjects/domain/entities/subject.dart';
 import 'package:itaaleem/features/subjects/presentation/providers/subjects_providers.dart';
-import 'package:itaaleem/features/subjects/presentation/widgets/subject_icon.dart';
+import 'package:itaaleem/features/subjects/presentation/widgets/subject_cover.dart';
 import 'package:itaaleem/features/subscriptions/presentation/widgets/subject_lock_gate.dart';
 import 'package:flutter/material.dart';
-import 'package:itaaleem/core/widgets/fade_slide_in.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
@@ -35,6 +35,7 @@ class SubjectsScreen extends ConsumerWidget {
     final isDemo = ref.watch(isDemoSessionProvider);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text(
           'موادي',
@@ -67,7 +68,7 @@ class _DemoSubjectsList extends StatelessWidget {
           const SizedBox(height: AppSpacing.base),
       itemBuilder: (context, index) => KeyedSubtree(
         key: ValueKey(index),
-        child: FadeSlideIn.staggered(
+        child: Reveal(
           index: index,
           child: _DemoSubjectCard(subject: dummySubjects[index]),
         ),
@@ -104,6 +105,9 @@ class _RealSubjectsList extends ConsumerWidget {
         }
         final groups = _groupByTeacher(subjects);
         var index = 0;
+        // A subject under several doctors is listed more than once; only
+        // its first card may carry the Hero tag (tags must be unique).
+        final heroed = <int>{};
         return ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
@@ -121,12 +125,15 @@ class _RealSubjectsList extends ConsumerWidget {
                 Padding(
                   key: ValueKey('${group.teacherName}-${subject.id}'),
                   padding: const EdgeInsets.only(top: AppSpacing.md),
-                  child: FadeSlideIn.staggered(
-                    index: (index++).clamp(0, 8),
+                  child: Reveal(
+                    index: index++,
                     child: SubjectLockGate(
                       subjectId: subject.id,
                       subjectName: subject.name,
-                      child: _SubjectCard(subject: subject),
+                      child: _SubjectCard(
+                        subject: subject,
+                        hero: heroed.add(subject.id),
+                      ),
                     ),
                   ),
                 ),
@@ -216,23 +223,7 @@ class _SubjectsHeader extends StatelessWidget {
             style: text.titleSmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          decoration: BoxDecoration(
-            color: scheme.primaryContainer,
-            borderRadius: BorderRadius.circular(AppRadius.full),
-          ),
-          child: Text(
-            '$count مادة',
-            style: text.labelLarge?.copyWith(
-              color: scheme.onPrimaryContainer,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
+        StatusPill(label: '$count مادة'),
       ],
     );
   }
@@ -287,113 +278,116 @@ class _TeacherHeader extends StatelessWidget {
 }
 
 class _SubjectCard extends ConsumerWidget {
-  const _SubjectCard({required this.subject});
+  const _SubjectCard({required this.subject, this.hero = true});
 
   final Subject subject;
+
+  /// Whether the cover is the Hero into the subject's page.
+  final bool hero;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    final radius = BorderRadius.circular(AppRadius.lg);
     final status = ref
         .watch(subjectSubscriptionProvider(subject.id))
         .valueOrNull;
     final progress = subject.progressPercent;
 
-    return Card(
-      elevation: 1,
-      margin: EdgeInsets.zero,
-      color: scheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(borderRadius: radius),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/subject-detail/${subject.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              SubjectIcon(
-                iconUrl: subject.iconUrl,
-                seed: subject.id,
-                name: subject.name,
-                size: 60,
-                iconSize: 30,
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return AppCard(
+      padding: EdgeInsets.zero,
+      onTap: () => context.push('/subject-detail/${subject.id}'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AspectRatio(
+            aspectRatio: 16 / 7,
+            child: hero
+                ? Hero(
+                    tag: 'subject-cover-${subject.id}',
+                    child: SubjectCover(subject: subject),
+                  )
+                : SubjectCover(subject: subject),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            subject.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: text.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                    Expanded(
+                      child: Text(
+                        subject.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
-                        // Only for paid subjects — free ones need no badge.
-                        if (status != null && status.requiresSubscription) ...[
-                          const SizedBox(width: AppSpacing.sm),
-                          status.hasAccess
-                              ? const StatusBadge(
-                                  type: StatusType.success,
-                                  label: 'فعّال',
-                                )
-                              : StatusBadge(
-                                  type: StatusType.error,
-                                  label: status.subscription == null
-                                      ? 'غير مشترك'
-                                      : 'منتهي',
-                                ),
-                        ],
-                      ],
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.play_circle_outline_rounded,
-                          size: 15,
-                          color: scheme.primary,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          '${subject.lessonsCount} محاضرة',
-                          style: text.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                        if (progress != null) ...[
-                          const Spacer(),
-                          Text(
-                            '${progress.round()}%',
-                            style: text.labelSmall?.copyWith(
-                              color: scheme.primary,
-                              fontWeight: FontWeight.w700,
+                    // Only for paid subjects — free ones need no badge.
+                    if (status != null && status.requiresSubscription) ...[
+                      const SizedBox(width: AppSpacing.sm),
+                      status.hasAccess
+                          ? const StatusBadge(
+                              type: StatusType.success,
+                              label: 'فعّال',
+                            )
+                          : StatusBadge(
+                              type: StatusType.error,
+                              label: status.subscription == null
+                                  ? 'غير مشترك'
+                                  : 'منتهي',
                             ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    if (progress != null) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      AppProgressBar(progress: progress / 100, height: 6),
                     ],
                   ],
                 ),
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Icon(Icons.chevron_left_rounded, color: scheme.onSurfaceVariant),
-            ],
+                const SizedBox(height: AppSpacing.sm),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xs,
+                  children: [
+                    if (subject.lessonsCount > 0)
+                      StatusPill(
+                        icon: Icons.play_circle_outline_rounded,
+                        label: '${subject.lessonsCount} محاضرة',
+                        dense: true,
+                      ),
+                    if (subject.examsCount > 0)
+                      StatusPill(
+                        icon: Icons.quiz_outlined,
+                        label: '${subject.examsCount} امتحان',
+                        color: scheme.tertiary,
+                        dense: true,
+                      ),
+                  ],
+                ),
+                if (progress != null) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: AppProgressBar(
+                          progress: progress / 100,
+                          height: 6,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        '${progress.round()}%',
+                        style: text.labelSmall?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

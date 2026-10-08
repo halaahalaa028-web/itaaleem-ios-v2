@@ -7,6 +7,7 @@ import 'package:itaaleem/features/exams/presentation/providers/exams_providers.d
 import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/app/router/route_args.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,10 +27,12 @@ class ExamDetailsScreen extends ConsumerWidget {
     if (examId <= 0) {
       return Scaffold(
         appBar: AppBar(title: const Text('تفاصيل الامتحان')),
-        body: ErrorView(
-          message: 'لا يمكن فتح هذا الامتحان',
-          retryLabel: 'رجوع',
-          onRetry: () => Navigator.of(context).maybePop(),
+        body: AppBackground(
+          child: ErrorView(
+            message: 'لا يمكن فتح هذا الامتحان',
+            retryLabel: 'رجوع',
+            onRetry: () => Navigator.of(context).maybePop(),
+          ),
         ),
       );
     }
@@ -37,15 +40,17 @@ class ExamDetailsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('تفاصيل الامتحان')),
-      body: detailsAsync.when(
-        loading: () => const ShimmerDetail(heroHeight: 160),
-        error: (error, stackTrace) => ErrorView(
-          // 404 → "الامتحان غير متوفر", 429 → rate limit, 422 → server text.
-          message: failureOf(error).message,
-          retryLabel: 'إعادة المحاولة',
-          onRetry: () => ref.invalidate(examDetailsProvider(examId)),
+      body: AppBackground(
+        child: detailsAsync.when(
+          loading: () => const ShimmerDetail(heroHeight: 160),
+          error: (error, stackTrace) => ErrorView(
+            // 404 → "الامتحان غير متوفر", 429 → rate limit, 422 → server text.
+            message: failureOf(error).message,
+            retryLabel: 'إعادة المحاولة',
+            onRetry: () => ref.invalidate(examDetailsProvider(examId)),
+          ),
+          data: (details) => _ExamDetailsBody(details: details, examId: examId),
         ),
-        data: (details) => _ExamDetailsBody(details: details, examId: examId),
       ),
     );
   }

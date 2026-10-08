@@ -5,6 +5,11 @@ import 'package:itaaleem/features/video/data/offline/offline_database.dart';
 import 'package:itaaleem/features/video/data/offline/offline_download_manager.dart';
 import 'package:itaaleem/features/video/presentation/providers/downloads_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/subjects/presentation/widgets/lesson_access.dart';
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
+import 'package:itaaleem/core/network/dio_client.dart';
+import 'package:itaaleem/core/network/connectivity_provider.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/fade_slide_in.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,28 +32,30 @@ class DownloadsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('المحمّلات')),
-      body: videosAsync.when(
-        loading: () => const ShimmerList(count: 4, thumbnailSize: 64),
-        error: (error, _) => ErrorView(
-          message: 'تعذر تحميل قائمة المحمّلات',
-          retryLabel: 'إعادة المحاولة',
-          onRetry: () => ref.invalidate(downloadedVideosProvider),
-        ),
-        data: (videos) => videos.isEmpty
-            ? const _EmptyState()
-            : ListView.separated(
-                padding: const EdgeInsets.all(AppSpacing.base),
-                itemCount: videos.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: AppSpacing.md),
-                itemBuilder: (context, index) => KeyedSubtree(
-                  key: ValueKey(videos[index].lessonId),
-                  child: FadeSlideIn.staggered(
-                    index: index,
-                    child: _DownloadRow(video: videos[index]),
+      body: AppBackground(
+        child: videosAsync.when(
+          loading: () => const ShimmerList(count: 4, thumbnailSize: 64),
+          error: (error, _) => ErrorView(
+            message: 'تعذر تحميل قائمة المحمّلات',
+            retryLabel: 'إعادة المحاولة',
+            onRetry: () => ref.invalidate(downloadedVideosProvider),
+          ),
+          data: (videos) => videos.isEmpty
+              ? const _EmptyState()
+              : ListView.separated(
+                  padding: const EdgeInsets.all(AppSpacing.base),
+                  itemCount: videos.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(height: AppSpacing.md),
+                  itemBuilder: (context, index) => KeyedSubtree(
+                    key: ValueKey(videos[index].lessonId),
+                    child: FadeSlideIn.staggered(
+                      index: index,
+                      child: _DownloadRow(video: videos[index]),
+                    ),
                   ),
                 ),
-              ),
+        ),
       ),
     );
   }
@@ -136,6 +143,29 @@ class _DownloadRow extends ConsumerWidget {
     }
   }
 
+  /// Online: confirm the student still has access first — a lesson that
+  /// became locked (e.g. subscription cancelled) has its download deleted.
+  /// Offline: plays as before.
+  Future<void> _checkAndPlay(BuildContext context, WidgetRef ref) async {
+    final online = ref.read(connectivityStatusProvider).valueOrNull ?? false;
+    if (online) {
+      final access = await checkLessonAccess(
+        ref.read(dioClientProvider),
+        video.lessonId,
+      );
+      if (access == false) {
+        await ref
+            .read(offlineDownloadManagerProvider)
+            .deleteDownload(video.lessonId);
+        if (context.mounted) {
+          await showPaidContentSheet(context, lessonId: video.lessonId);
+        }
+        return;
+      }
+    }
+    if (context.mounted) _play(context);
+  }
+
   void _play(BuildContext context) {
     // No `videoUrl`: `LessonVideoScreen` finds the completed local copy by
     // lesson id and plays it from disk, with no network involved.
@@ -159,8 +189,14 @@ class _DownloadRow extends ConsumerWidget {
       padding: const EdgeInsets.all(AppSpacing.cardPadding),
       decoration: BoxDecoration(
         color: context.palette.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: context.palette.border),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(
+          color: DesignTokens.cardBorder(Theme.of(context).colorScheme),
+        ),
+        boxShadow: DesignTokens.softShadow(
+          Theme.of(context).colorScheme,
+          strength: 0.55,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -172,7 +208,7 @@ class _DownloadRow extends ConsumerWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: _statusColor(context, status).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
                   _statusIcon(status),
@@ -232,7 +268,7 @@ class _DownloadRow extends ConsumerWidget {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _actionButton(status, manager, context)),
+              Expanded(child: _actionButton(status, manager, context, ref)),
               const SizedBox(width: AppSpacing.sm),
               IconButton(
                 onPressed: () => _delete(context, ref),
@@ -252,11 +288,12 @@ class _DownloadRow extends ConsumerWidget {
     String status,
     OfflineDownloadManager manager,
     BuildContext context,
+    WidgetRef ref,
   ) {
     switch (status) {
       case 'completed':
         return FilledButton.icon(
-          onPressed: () => _play(context),
+          onPressed: () => _checkAndPlay(context, ref),
           icon: const Icon(Icons.play_arrow_rounded),
           label: const Text('تشغيل'),
           style: FilledButton.styleFrom(

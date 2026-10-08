@@ -33,7 +33,8 @@ MessageModel _fromJson(Map<String, dynamic> j) => MessageModel(
   senderId: j['sender_id'] as int? ?? 0,
   receiverId: j['receiver_id'] as int? ?? 0,
   isMine: j['is_mine'] as bool? ?? false,
-  createdAt: DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
+  createdAt:
+      DateTime.tryParse(j['created_at'] as String? ?? '') ?? DateTime.now(),
   readAt: DateTime.tryParse(j['read_at'] as String? ?? ''),
 );
 
@@ -73,14 +74,19 @@ class ChatController extends AsyncNotifier<List<MessageModel>> {
   }
 
   Future<List<MessageModel>> _fetchMerged(List<MessageModel> local) async {
-    final remote = await ref.read(messagesRemoteDataSourceProvider).getMessages();
+    final remote = await ref
+        .read(messagesRemoteDataSourceProvider)
+        .getMessages();
     final merged = _merge(remote, local);
     unawaited(_writeCache(merged));
     return merged;
   }
 
   /// Server list plus this device's own messages the server didn't return.
-  List<MessageModel> _merge(List<MessageModel> remote, List<MessageModel> local) {
+  List<MessageModel> _merge(
+    List<MessageModel> remote,
+    List<MessageModel> local,
+  ) {
     final remoteIds = remote.map((m) => m.id).toSet();
     final remoteBodies = remote
         .where((m) => m.isMine)
@@ -90,7 +96,8 @@ class ChatController extends AsyncNotifier<List<MessageModel>> {
     final extra = <MessageModel>[];
     for (final m in local) {
       if (!m.isMine || remoteIds.contains(m.id)) continue;
-      if (_isPending(m) && now.difference(m.createdAt) > _pendingLifetime) continue;
+      if (_isPending(m) && now.difference(m.createdAt) > _pendingLifetime)
+        continue;
       // Same text already confirmed by the server -> it's that message.
       final index = remoteBodies.indexOf(m.body.trim());
       if (index != -1) {
@@ -99,7 +106,8 @@ class ChatController extends AsyncNotifier<List<MessageModel>> {
       }
       extra.add(m);
     }
-    return [...remote, ...extra]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return [...remote, ...extra]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   /// Re-fetches from the server, keeping the current list if that fails.
@@ -115,7 +123,8 @@ class ChatController extends AsyncNotifier<List<MessageModel>> {
   }
 
   /// Shows a just-typed message immediately (id `pending-…`) and stores it.
-  void addPending(MessageModel message) => _set([message, ...?state.valueOrNull]);
+  void addPending(MessageModel message) =>
+      _set([message, ...?state.valueOrNull]);
 
   /// Swaps a pending message for the server's confirmed copy.
   void resolvePending(String pendingId, MessageModel sent) {
@@ -143,7 +152,8 @@ class ChatController extends AsyncNotifier<List<MessageModel>> {
       if (raw == null) return const [];
       final list = jsonDecode(raw) as List<dynamic>;
       return [
-        for (final item in list) _fromJson((item as Map).cast<String, dynamic>()),
+        for (final item in list)
+          _fromJson((item as Map).cast<String, dynamic>()),
       ];
     } catch (_) {
       return const [];
@@ -161,7 +171,9 @@ class ChatController extends AsyncNotifier<List<MessageModel>> {
   Future<void> _clearAllCaches() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      for (final key in prefs.getKeys().where((k) => k.startsWith(_cachePrefix))) {
+      for (final key in prefs.getKeys().where(
+        (k) => k.startsWith(_cachePrefix),
+      )) {
         await prefs.remove(key);
       }
     } catch (_) {}
@@ -169,4 +181,6 @@ class ChatController extends AsyncNotifier<List<MessageModel>> {
 }
 
 final chatControllerProvider =
-    AsyncNotifierProvider<ChatController, List<MessageModel>>(ChatController.new);
+    AsyncNotifierProvider<ChatController, List<MessageModel>>(
+      ChatController.new,
+    );

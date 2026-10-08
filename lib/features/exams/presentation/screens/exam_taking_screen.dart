@@ -10,6 +10,7 @@ import 'package:itaaleem/features/exams/presentation/widgets/exam_question_view.
 import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/app/router/route_args.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -341,92 +342,98 @@ class _ExamTakingScreenState extends ConsumerState<ExamTakingScreen> {
               ),
           ],
         ),
-        body: Column(
-          children: [
-            _QuestionNavigator(
-              count: questions.length,
-              current: _currentIndex,
-              isAnswered: (i) => _isAnswered(questions[i]),
-              onTap: _goToQuestion,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.base),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.full),
-                child: LinearProgressIndicator(
-                  minHeight: 4,
-                  value: questions.isEmpty
-                      ? 0
-                      : _answeredCount / questions.length,
+        body: AppBackground(
+          child: Column(
+            children: [
+              _QuestionNavigator(
+                count: questions.length,
+                current: _currentIndex,
+                isAnswered: (i) => _isAnswered(questions[i]),
+                onTap: _goToQuestion,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.base,
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  child: LinearProgressIndicator(
+                    minHeight: 4,
+                    value: questions.isEmpty
+                        ? 0
+                        : _answeredCount / questions.length,
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: questions.length,
-                onPageChanged: (index) => setState(() => _currentIndex = index),
-                itemBuilder: (context, index) {
-                  final question = questions[index];
-                  final answer = _answers[question.id];
-                  return ExamQuestionView(
-                    key: ValueKey(question.id),
-                    question: question,
-                    index: index,
-                    total: questions.length,
-                    selectedOptionId: answer is int ? answer : null,
-                    textAnswer: answer is String ? answer : null,
-                    onSelectOption: (optionId) =>
-                        setState(() => _answers[question.id] = optionId),
-                    onTextChanged: (value) =>
-                        setState(() => _answers[question.id] = value),
-                  );
-                },
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: questions.length,
+                  onPageChanged: (index) =>
+                      setState(() => _currentIndex = index),
+                  itemBuilder: (context, index) {
+                    final question = questions[index];
+                    final answer = _answers[question.id];
+                    return ExamQuestionView(
+                      key: ValueKey(question.id),
+                      question: question,
+                      index: index,
+                      total: questions.length,
+                      selectedOptionId: answer is int ? answer : null,
+                      textAnswer: answer is String ? answer : null,
+                      onSelectOption: (optionId) =>
+                          setState(() => _answers[question.id] = optionId),
+                      onTextChanged: (value) =>
+                          setState(() => _answers[question.id] = value),
+                    );
+                  },
+                ),
               ),
-            ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.base),
-                child: Row(
-                  children: [
-                    if (_currentIndex > 0) ...[
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _goToQuestion(_currentIndex - 1),
-                          icon: const Icon(Icons.arrow_back_rounded),
-                          label: const Text('السابق'),
+              SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.base),
+                  child: Row(
+                    children: [
+                      if (_currentIndex > 0) ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _goToQuestion(_currentIndex - 1),
+                            icon: const Icon(Icons.arrow_back_rounded),
+                            label: const Text('السابق'),
+                          ),
                         ),
+                        const SizedBox(width: AppSpacing.md),
+                      ],
+                      Expanded(
+                        child: !isLast
+                            ? FilledButton.icon(
+                                onPressed: () =>
+                                    _goToQuestion(_currentIndex + 1),
+                                icon: const Icon(Icons.arrow_forward_rounded),
+                                label: const Text('التالي'),
+                              )
+                            : FilledButton(
+                                onPressed: _submitting ? null : _confirmSubmit,
+                                child: _submitting
+                                    ? SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: cs.onPrimary,
+                                        ),
+                                      )
+                                    : const Text('تسليم الامتحان'),
+                              ),
                       ),
-                      const SizedBox(width: AppSpacing.md),
                     ],
-                    Expanded(
-                      child: !isLast
-                          ? FilledButton.icon(
-                              onPressed: () => _goToQuestion(_currentIndex + 1),
-                              icon: const Icon(Icons.arrow_forward_rounded),
-                              label: const Text('التالي'),
-                            )
-                          : FilledButton(
-                              onPressed: _submitting ? null : _confirmSubmit,
-                              child: _submitting
-                                  ? SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: cs.onPrimary,
-                                      ),
-                                    )
-                                  : const Text('تسليم الامتحان'),
-                            ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

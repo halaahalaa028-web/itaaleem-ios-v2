@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/subject_icon.dart';
@@ -151,19 +152,7 @@ class _HeaderBackground extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final url = imageUrl;
     final gradient = DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: AlignmentDirectional.topStart,
-          end: AlignmentDirectional.bottomEnd,
-          colors: [
-            scheme.primary,
-            Color.alphaBlend(
-              scheme.primaryContainer.withValues(alpha: 0.35),
-              scheme.primary,
-            ),
-          ],
-        ),
-      ),
+      decoration: BoxDecoration(gradient: DesignTokens.brandGradient(scheme)),
     );
 
     return Stack(
@@ -260,13 +249,16 @@ class _HeaderContent extends StatelessWidget {
                     color: scheme.surface,
                     borderRadius: BorderRadius.circular(AppRadius.lg),
                   ),
-                  child: SubjectIcon(
-                    iconUrl: header.imageUrl,
-                    seed: header.subjectId,
-                    name: header.title,
-                    size: 54,
-                    iconSize: 26,
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Hero(
+                    tag: 'subject-cover-${header.subjectId}',
+                    child: SubjectIcon(
+                      iconUrl: header.imageUrl,
+                      seed: header.subjectId,
+                      name: header.title,
+                      size: 58,
+                      iconSize: 28,
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
                   ),
                 ),
               ),
@@ -392,67 +384,73 @@ class _ContinueButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton(
-        onPressed: onPressed,
-        style: FilledButton.styleFrom(
-          backgroundColor: scheme.surface,
-          foregroundColor: scheme.primary,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.base,
-            vertical: AppSpacing.md,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.button),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                color: scheme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.play_arrow_rounded,
-                size: 20,
-                color: scheme.onPrimary,
-              ),
+    return PressableScale(
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor: scheme.surface,
+            foregroundColor: scheme.primary,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.base,
+              vertical: AppSpacing.md,
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (caption != null)
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.button),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  gradient: DesignTokens.brandGradient(scheme),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  size: 20,
+                  color: scheme.onPrimary,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     Text(
-                      caption!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
+                      label,
+                      style: const TextStyle(
                         fontFamily: 'Cairo',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: scheme.onSurfaceVariant,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                ],
+                    if (caption != null)
+                      Text(
+                        caption!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                  ],
+                ),
               ),
-            ),
-            Icon(Icons.arrow_forward_rounded, size: 18, color: scheme.primary),
-          ],
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 18,
+                color: scheme.primary,
+              ),
+            ],
+          ),
         ),
       ),
     );

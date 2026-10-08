@@ -40,7 +40,9 @@ class LectureDetailsModel extends LectureDetails {
     }
     return LectureDetailsModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
-      title: (json['title'] ?? json['name']) as String? ?? '',
+      title:
+          (json['title'] ?? json['name'] ?? json['file_name'])?.toString() ??
+          '',
       description: json['description'] as String?,
       videos: rawVideos
           .map((e) => LectureVideoModel.fromJson(e as Map<String, dynamic>))
@@ -78,14 +80,22 @@ class LectureAttachmentModel extends LectureAttachment {
     required super.title,
     required super.fileUrl,
     super.isDownloadable,
+    super.isLocked,
   });
 
   factory LectureAttachmentModel.fromJson(Map<String, dynamic> json) {
     return LectureAttachmentModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
-      title: (json['title'] ?? json['name']) as String? ?? '',
-      fileUrl: ApiEndpoints.mediaUrl(json['file_path'] as String?) ?? '',
+      title:
+          (json['title'] ?? json['name'] ?? json['file_name'])?.toString() ??
+          '',
+      fileUrl:
+          ApiEndpoints.mediaUrl(
+            (json['file_url'] ?? json['file_path'])?.toString(),
+          ) ??
+          '',
       isDownloadable: (json['is_downloadable'] as bool?) ?? false,
+      isLocked: json['is_locked'] == true,
     );
   }
 }
@@ -96,6 +106,7 @@ class LecturePdfModel extends LecturePdf {
     required super.title,
     required super.fileUrl,
     super.isDownloadable,
+    super.isLocked,
     super.lastPage,
     super.readPercentage,
   });
@@ -105,9 +116,16 @@ class LecturePdfModel extends LecturePdf {
     final progress = rawProgress is Map<String, dynamic> ? rawProgress : null;
     return LecturePdfModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
-      title: (json['title'] ?? json['name']) as String? ?? '',
-      fileUrl: ApiEndpoints.mediaUrl(json['file_path'] as String?) ?? '',
+      title:
+          (json['title'] ?? json['name'] ?? json['file_name'])?.toString() ??
+          '',
+      fileUrl:
+          ApiEndpoints.mediaUrl(
+            (json['file_url'] ?? json['file_path'])?.toString(),
+          ) ??
+          '',
       isDownloadable: (json['is_downloadable'] as bool?) ?? false,
+      isLocked: json['is_locked'] == true,
       lastPage: (progress?['last_page'] as num?)?.toInt() ?? 1,
       readPercentage: _asDouble(progress?['read_percentage']),
     );

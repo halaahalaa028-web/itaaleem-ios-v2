@@ -2,7 +2,9 @@
 final _idPatterns = <RegExp>[
   RegExp(r'[?&]v=([_\-a-zA-Z0-9]{11})'),
   RegExp(r'youtu\.be/([_\-a-zA-Z0-9]{11})'),
-  RegExp(r'youtube(?:-nocookie)?\.com/(?:shorts|embed|live|v)/([_\-a-zA-Z0-9]{11})'),
+  RegExp(
+    r'youtube(?:-nocookie)?\.com/(?:shorts|embed|live|v)/([_\-a-zA-Z0-9]{11})',
+  ),
 ];
 
 bool isYouTubeUrl(String? url) {
@@ -26,7 +28,8 @@ bool looksLikeYouTube(String? url) {
 /// The 11-character video id of any common YouTube URL form, or `null`.
 String? extractYouTubeId(String url) {
   final trimmed = url.trim();
-  if (!trimmed.contains('http') && RegExp(r'^[_\-a-zA-Z0-9]{11}$').hasMatch(trimmed)) {
+  if (!trimmed.contains('http') &&
+      RegExp(r'^[_\-a-zA-Z0-9]{11}$').hasMatch(trimmed)) {
     return trimmed;
   }
   for (final pattern in _idPatterns) {

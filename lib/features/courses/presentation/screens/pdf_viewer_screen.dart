@@ -15,6 +15,8 @@ import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:itaaleem/core/widgets/content_watermark.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/subjects/presentation/widgets/lesson_access.dart';
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -88,7 +90,16 @@ class PdfViewerScreen extends ConsumerWidget {
                         ),
                       );
                     }
-                    return _PdfBody(key: ValueKey('pdf-${pdf.id}'), pdf: pdf);
+                    if (pdf.locked) {
+                      // No access: drop any cached copy, never show it.
+                      _evictCached(pdf.id);
+                      return _LockedPdf(lectureId: lectureId);
+                    }
+                    return _PdfBody(
+                      key: ValueKey('pdf-${pdf.id}'),
+                      pdf: pdf,
+                      lectureId: lectureId,
+                    );
                   },
                 ),
               ),
@@ -97,6 +108,14 @@ class PdfViewerScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  static Future<void> _evictCached(int pdfId) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final f = File('${dir.path}/pdf_cache/$pdfId.pdf');
+      if (await f.exists()) await f.delete();
+    } catch (_) {}
   }
 
   LecturePdf? _findPdf(List<LecturePdf> pdfs, int id) {
@@ -146,10 +165,50 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// Shown instead of the viewer for a locked PDF; the button opens the same
+/// sheet as a locked video (iOS: "contact the center").
+class _LockedPdf extends StatelessWidget {
+  const _LockedPdf({required this.lectureId});
+
+  final int lectureId;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.lock_rounded,
+              size: 48,
+              color: context.palette.primaryOnDark,
+            ),
+            const SizedBox(height: AppSpacing.base),
+            Text(
+              const ContentLockedException().displayMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.darkTextPrimary),
+            ),
+            const SizedBox(height: AppSpacing.base),
+            FilledButton(
+              onPressed: () =>
+                  showPaidContentSheet(context, lessonId: lectureId),
+              child: const Text('عرض التفاصيل'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PdfBody extends ConsumerStatefulWidget {
-  const _PdfBody({super.key, required this.pdf});
+  const _PdfBody({super.key, required this.pdf, required this.lectureId});
 
   final LecturePdf pdf;
+  final int lectureId;
 
   @override
   ConsumerState<_PdfBody> createState() => _PdfBodyState();
@@ -251,11 +310,11 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
       await target.parent.create(recursive: true);
       partial = File('${target.path}.part');
       _cancelToken = dio.CancelToken();
-      await ref
+      Future<void> fetch(String url) => ref
           .read(dioClientProvider)
           .download(
-            widget.pdf.fileUrl,
-            partial.path,
+            url,
+            partial!.path,
             cancelToken: _cancelToken,
             onReceiveProgress: (received, total) {
               if (!mounted) return;
@@ -268,6 +327,28 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
               }
             },
           );
+      try {
+        await fetch(widget.pdf.fileUrl);
+      } on dio.DioException catch (e) {
+        final mapped = classifyContentError(e);
+        if (mapped is! ContentLinkExpiredException) throw mapped ?? e;
+        // The signed link (~10 min) expired: refetch the lecture for a
+        // fresh one and retry exactly once.
+        final fresh = await ref.refresh(
+          lectureDetailsProvider(widget.lectureId).future,
+        );
+        final again = fresh.pdfs
+            .where((p) => p.id == widget.pdf.id)
+            .firstOrNull;
+        if (again == null || again.locked) {
+          throw const ContentLockedException();
+        }
+        try {
+          await fetch(again.fileUrl);
+        } on dio.DioException catch (e2) {
+          throw classifyContentError(e2) ?? e2;
+        }
+      }
       if (!await _isValidPdf(partial)) {
         throw const FormatException('downloaded file is not a valid PDF');
       }
@@ -284,6 +365,12 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
       } catch (_) {}
       if (e is dio.DioException && e.type == dio.DioExceptionType.cancel) {
         return;
+      }
+      if (e is ContentLockedException) {
+        try {
+          final cache = await _cacheFile();
+          if (await cache.exists()) await cache.delete();
+        } catch (_) {}
       }
       if (mounted) setState(() => _loadError = _messageFor(e));
     }
@@ -307,6 +394,7 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
   }
 
   String _messageFor(Object error) {
+    if (error is ContentLockedException) return error.displayMessage;
     if (error is dio.DioException) {
       final statusCode = error.response?.statusCode;
       if (statusCode == 404) return 'الملف غير موجود على السيرفر';

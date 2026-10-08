@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/utils/open_file_in_app.dart';
 import 'package:itaaleem/core/widgets/app_card.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -91,99 +92,101 @@ class _AssignmentDetailScreenState
 
     return Scaffold(
       appBar: AppBar(title: const Text('تفاصيل الواجب')),
-      body: details.when(
-        loading: () => const Padding(
-          padding: EdgeInsets.all(AppSpacing.lg),
-          child: SkeletonList(count: 3),
-        ),
-        error: (e, _) => ErrorView(
-          message: failureOf(e).message,
-          retryLabel: 'إعادة المحاولة',
-          onRetry: () => ref.invalidate(assignmentDetailsProvider(id)),
-        ),
-        data: (a) {
-          final sub = submission.valueOrNull;
-          final submitted = sub != null || a.isSubmitted;
-          return ListView(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            children: [
-              AppCard(
-                padding: const EdgeInsets.all(AppSpacing.cardPadding),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      a.title,
-                      style: text.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    if (a.subjectName != null) ...[
-                      const SizedBox(height: AppSpacing.xs),
+      body: AppBackground(
+        child: details.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: SkeletonList(count: 3),
+          ),
+          error: (e, _) => ErrorView(
+            message: failureOf(e).message,
+            retryLabel: 'إعادة المحاولة',
+            onRetry: () => ref.invalidate(assignmentDetailsProvider(id)),
+          ),
+          data: (a) {
+            final sub = submission.valueOrNull;
+            final submitted = sub != null || a.isSubmitted;
+            return ListView(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              children: [
+                AppCard(
+                  padding: const EdgeInsets.all(AppSpacing.cardPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        a.subjectName!,
-                        style: text.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                        a.title,
+                        style: text.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ],
-                    const SizedBox(height: AppSpacing.md),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
-                      children: [
-                        if (a.dueDate != null)
-                          _Meta(
-                            icon: Icons.event_rounded,
-                            label:
-                                'الموعد: ${DateFormat('d MMM yyyy - h:mm a', 'ar').format(a.dueDate!)}',
-                            color: a.isOverdue ? scheme.error : null,
+                      if (a.subjectName != null) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          a.subjectName!,
+                          style: text.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
                           ),
-                        if (a.maxScore != null)
-                          _Meta(
-                            icon: Icons.star_rounded,
-                            label: 'الدرجة: ${a.maxScore}',
-                          ),
+                        ),
                       ],
-                    ),
-                    if (a.description != null &&
-                        a.description!.trim().isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.base),
-                      Text(a.description!, style: text.bodyMedium),
-                    ],
-                    if (a.attachmentUrl != null) ...[
-                      const SizedBox(height: AppSpacing.base),
-                      OutlinedButton.icon(
-                        onPressed: () => openFileInApp(
-                          context,
-                          a.attachmentUrl,
-                          title: 'ملف الواجب',
-                        ),
-                        icon: const Icon(Icons.attach_file_rounded),
-                        label: const Text('ملف الواجب'),
+                      const SizedBox(height: AppSpacing.md),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        children: [
+                          if (a.dueDate != null)
+                            _Meta(
+                              icon: Icons.event_rounded,
+                              label:
+                                  'الموعد: ${DateFormat('d MMM yyyy - h:mm a', 'ar').format(a.dueDate!)}',
+                              color: a.isOverdue ? scheme.error : null,
+                            ),
+                          if (a.maxScore != null)
+                            _Meta(
+                              icon: Icons.star_rounded,
+                              label: 'الدرجة: ${a.maxScore}',
+                            ),
+                        ],
                       ),
+                      if (a.description != null &&
+                          a.description!.trim().isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.base),
+                        Text(a.description!, style: text.bodyMedium),
+                      ],
+                      if (a.attachmentUrl != null) ...[
+                        const SizedBox(height: AppSpacing.base),
+                        OutlinedButton.icon(
+                          onPressed: () => openFileInApp(
+                            context,
+                            a.attachmentUrl,
+                            title: 'ملف الواجب',
+                          ),
+                          icon: const Icon(Icons.attach_file_rounded),
+                          label: const Text('ملف الواجب'),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: AppSpacing.base),
-              if (submitted) _SubmissionCard(submission: sub, assignment: a),
-              if (!submitted || (sub != null && !sub.isGraded)) ...[
-                if (submitted) const SizedBox(height: AppSpacing.base),
-                _UploadCard(
-                  title: submitted ? 'إعادة التسليم' : 'تسليم الحل',
-                  file: _file,
-                  notes: _notes,
-                  submitting: _submitting,
-                  onPickGallery: () => _pick(ImageSource.gallery),
-                  onPickCamera: () => _pick(ImageSource.camera),
-                  onClear: () => setState(() => _file = null),
-                  onSubmit: _submit,
-                ),
+                const SizedBox(height: AppSpacing.base),
+                if (submitted) _SubmissionCard(submission: sub, assignment: a),
+                if (!submitted || (sub != null && !sub.isGraded)) ...[
+                  if (submitted) const SizedBox(height: AppSpacing.base),
+                  _UploadCard(
+                    title: submitted ? 'إعادة التسليم' : 'تسليم الحل',
+                    file: _file,
+                    notes: _notes,
+                    submitting: _submitting,
+                    onPickGallery: () => _pick(ImageSource.gallery),
+                    onPickCamera: () => _pick(ImageSource.camera),
+                    onClear: () => setState(() => _file = null),
+                    onSubmit: _submit,
+                  ),
+                ],
               ],
-            ],
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

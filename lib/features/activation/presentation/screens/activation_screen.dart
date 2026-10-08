@@ -9,6 +9,7 @@ import 'package:itaaleem/features/auth/presentation/providers/auth_controller.da
 import 'package:itaaleem/features/courses/presentation/providers/courses_providers.dart';
 import 'package:itaaleem/features/home/presentation/providers/home_subjects_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import 'package:go_router/go_router.dart';
 
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
+
 /// Pushes [ActivationScreen] as a full-screen route on top of whatever tab
 /// the student is currently on (the "المواد" tab's empty state, or the
 /// subscribe-request sheet) — the code-redeem form is not a bottom-nav tab
@@ -118,126 +120,127 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('تفعيل كود')),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsetsDirectional.symmetric(
-              horizontal: AppSpacing.xl,
-              vertical: AppSpacing.xxl,
-            ),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.xl),
-                    decoration: BoxDecoration(
-                      gradient: context.palette.brandGradient,
-                      borderRadius: BorderRadius.circular(AppRadius.lg),
-                    ),
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundColor: context.palette.onPrimary.withValues(
-                            alpha: 0.24,
-                          ),
-                          child: Icon(
-                            Icons.qr_code_2_rounded,
-                            color: context.palette.onPrimary,
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.base),
-                        Text(
-                          'فعّل كورسك الآن',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.headlineSmall
-                              ?.copyWith(
-                                color: context.palette.onPrimary,
-                                fontWeight: FontWeight.w800,
-                              ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'أدخل كود التفعيل الذي حصلت عليه لبدء الكورس',
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: context.palette.onPrimary.withValues(
-                                  alpha: 0.85,
-                                ),
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        TextFormField(
-                          controller: _codeController,
-                          textAlign: TextAlign.center,
-                          textCapitalization: TextCapitalization.characters,
-                          inputFormatters: [_UpperCaseTextFormatter()],
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 6,
-                              ),
-                          decoration: const InputDecoration(
-                            hintText: 'XXXX-XXXX',
-                            prefixIcon: Icon(
-                              Icons.confirmation_number_rounded,
+      body: AppBackground(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsetsDirectional.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.xxl,
+              ),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.xl),
+                      decoration: BoxDecoration(
+                        gradient: context.palette.brandGradient,
+                        borderRadius: BorderRadius.circular(AppRadius.lg),
+                      ),
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundColor: context.palette.onPrimary
+                                .withValues(alpha: 0.24),
+                            child: Icon(
+                              Icons.qr_code_2_rounded,
+                              color: context.palette.onPrimary,
+                              size: 32,
                             ),
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'أدخل كود التفعيل';
-                            }
-                            return null;
-                          },
-                          onFieldSubmitted: (_) => _submit(),
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        FilledButton(
-                          onPressed: _submitting ? null : _submit,
-                          child: _submitting
-                              ? SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      context.palette.onPrimary,
-                                    ),
-                                  ),
-                                )
-                              : const Text('تفعيل'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.lg),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    transitionBuilder: (child, animation) => FadeTransition(
-                      opacity: animation,
-                      child: ScaleTransition(scale: animation, child: child),
-                    ),
-                    child: _outcome == null
-                        ? const SizedBox.shrink(key: ValueKey('empty'))
-                        : _OutcomeBanner(
-                            key: ValueKey(_outcome!.isSuccess),
-                            outcome: _outcome!,
-                            onViewCourses: widget.onActivated,
+                          const SizedBox(height: AppSpacing.base),
+                          Text(
+                            'فعّل كورسك الآن',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
+                                  color: context.palette.onPrimary,
+                                  fontWeight: FontWeight.w800,
+                                ),
                           ),
-                  ),
-                ],
+                          const SizedBox(height: 6),
+                          Text(
+                            'أدخل كود التفعيل الذي حصلت عليه لبدء الكورس',
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: context.palette.onPrimary.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _codeController,
+                            textAlign: TextAlign.center,
+                            textCapitalization: TextCapitalization.characters,
+                            inputFormatters: [_UpperCaseTextFormatter()],
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 6,
+                                ),
+                            decoration: const InputDecoration(
+                              hintText: 'XXXX-XXXX',
+                              prefixIcon: Icon(
+                                Icons.confirmation_number_rounded,
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'أدخل كود التفعيل';
+                              }
+                              return null;
+                            },
+                            onFieldSubmitted: (_) => _submit(),
+                          ),
+                          const SizedBox(height: AppSpacing.lg),
+                          FilledButton(
+                            onPressed: _submitting ? null : _submit,
+                            child: _submitting
+                                ? SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation(
+                                        context.palette.onPrimary,
+                                      ),
+                                    ),
+                                  )
+                                : const Text('تفعيل'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(scale: animation, child: child),
+                      ),
+                      child: _outcome == null
+                          ? const SizedBox.shrink(key: ValueKey('empty'))
+                          : _OutcomeBanner(
+                              key: ValueKey(_outcome!.isSuccess),
+                              outcome: _outcome!,
+                              onViewCourses: widget.onActivated,
+                            ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

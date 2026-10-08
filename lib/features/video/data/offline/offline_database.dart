@@ -65,11 +65,9 @@ class OfflineVideos extends Table {
   IntColumn get pendingSyncDurationSeconds => integer().nullable()();
   RealColumn get pendingSyncProgressPercentage => real().nullable()();
 
-  DateTimeColumn get createdAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
-  DateTimeColumn get updatedAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
 @DriftDatabase(tables: [OfflineVideos])
@@ -87,13 +85,13 @@ class OfflineDatabase extends _$OfflineDatabase {
     },
   );
 
-  Future<OfflineVideo?> getByLessonId(int lessonId) =>
-      (select(offlineVideos)..where((t) => t.lessonId.equals(lessonId)))
-          .getSingleOrNull();
+  Future<OfflineVideo?> getByLessonId(int lessonId) => (select(
+    offlineVideos,
+  )..where((t) => t.lessonId.equals(lessonId))).getSingleOrNull();
 
-  Stream<OfflineVideo?> watchByLessonId(int lessonId) =>
-      (select(offlineVideos)..where((t) => t.lessonId.equals(lessonId)))
-          .watchSingleOrNull();
+  Stream<OfflineVideo?> watchByLessonId(int lessonId) => (select(
+    offlineVideos,
+  )..where((t) => t.lessonId.equals(lessonId))).watchSingleOrNull();
 
   /// Every non-cancelled row, newest download first — cancelled downloads
   /// are deleted outright (see [OfflineDownloadManager.cancelDownload]), so
@@ -129,7 +127,12 @@ class OfflineDatabase extends _$OfflineDatabase {
   /// cancelled rows are left alone.
   Future<void> markAllExpired() =>
       (update(offlineVideos)..where(
-            (t) => t.downloadStatus.isIn(['completed', 'downloading', 'paused', 'queued']),
+            (t) => t.downloadStatus.isIn([
+              'completed',
+              'downloading',
+              'paused',
+              'queued',
+            ]),
           ))
           .write(
             OfflineVideosCompanion(

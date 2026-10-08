@@ -8,25 +8,22 @@ import 'package:itaaleem/core/widgets/status_badge.dart';
 import 'package:itaaleem/features/exams/domain/entities/exam.dart';
 import 'package:itaaleem/features/exams/presentation/providers/exams_providers.dart';
 
-/// The exams under a lecture's video (subject → lecture → video → exams),
-/// from `GET /lectures/{id}/exams`. Each card shows questions, duration,
-/// status and score; tapping opens the exam screen (`/exams/{id}`). Renders
-/// nothing at all (not even [header]) while loading or when there are none.
+/// The exams card under a lecture's video. Exams belong to the subject on
+/// the server (no lesson_id), so this reads the subject's list once
+/// (`GET /subjects/{id}/exams`, cached and shared by every lecture) and
+/// shows a single card that opens [ExamsScreen] for the subject. Renders
+/// nothing (not even [header]) while loading or when there are none.
 class LectureExamsSection extends ConsumerWidget {
-  const LectureExamsSection({
-    super.key,
-    required this.lectureId,
-    this.header,
-  });
+  const LectureExamsSection({super.key, required this.subjectId, this.header});
 
-  final int lectureId;
+  final int subjectId;
 
-  /// Shown above the cards only when there are exams.
+  /// Shown above the card only when there are exams.
   final Widget? header;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(lectureExamsProvider(lectureId));
+    final async = ref.watch(subjectExamsProvider(subjectId));
 
     return async.when(
       loading: () => const SizedBox.shrink(),
@@ -38,7 +35,7 @@ class LectureExamsSection extends ConsumerWidget {
             icon: Icons.cloud_off_rounded,
             text: failureOf(error).message,
             action: TextButton(
-              onPressed: () => ref.invalidate(lectureExamsProvider(lectureId)),
+              onPressed: () => ref.invalidate(subjectExamsProvider(subjectId)),
               child: const Text('إعادة المحاولة'),
             ),
           ),
@@ -50,14 +47,80 @@ class LectureExamsSection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ?header,
-            for (final exam in exams)
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpacing.md),
-                child: _LectureExamCard(exam: exam),
-              ),
+            if (exams.length == 1)
+              _LectureExamCard(exam: exams.first)
+            else
+              _SubjectExamsCard(subjectId: subjectId, count: exams.length),
           ],
         );
       },
+    );
+  }
+}
+
+/// "امتحانات المادة (N)" → `/subjects/{id}/exams`.
+class _SubjectExamsCard extends StatelessWidget {
+  const _SubjectExamsCard({required this.subjectId, required this.count});
+
+  final int subjectId;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      color: scheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/subjects/$subjectId/exams'),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: scheme.tertiaryContainer,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                ),
+                child: Icon(
+                  Icons.quiz_rounded,
+                  color: scheme.onTertiaryContainer,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'امتحانات المادة',
+                      style: text.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xs),
+                    Text(
+                      '$count امتحان',
+                      style: text.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_left_rounded, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 import 'package:itaaleem/features/center_admin/data/center_admin_models.dart';
@@ -100,33 +101,35 @@ class CenterNotificationsScreen extends ConsumerWidget {
         icon: const Icon(Icons.send_rounded),
         label: const Text('إشعار جديد'),
       ),
-      body: AdminDataTable(
-        path: 'notifications',
-        emptyTitle: 'لم يتم إرسال إشعارات بعد',
-        emptyIcon: Icons.notifications_none_rounded,
-        bottomPadding: 96,
-        itemBuilder: (context, r) {
-          final recipients = r.count([
-            'recipients_count',
-            'sent_count',
-            'recipients',
-          ]);
-          return AdminRecordCard(
-            title: r.text(['title']) ?? r.title,
-            leading: const AdminAvatar(
-              name: '',
-              icon: Icons.notifications_rounded,
-            ),
-            lines: [
-              r.text(['body', 'message']),
-              [
-                adminDate(r.date(['sent_at', 'created_at'])),
-                if (recipients != null) '$recipients مستلم',
-                if (r.nestedName('subject') case final s?) 'مادة $s',
-              ].join(' • '),
-            ],
-          );
-        },
+      body: AppBackground(
+        child: AdminDataTable(
+          path: 'notifications',
+          emptyTitle: 'لم يتم إرسال إشعارات بعد',
+          emptyIcon: Icons.notifications_none_rounded,
+          bottomPadding: 96,
+          itemBuilder: (context, r) {
+            final recipients = r.count([
+              'recipients_count',
+              'sent_count',
+              'recipients',
+            ]);
+            return AdminRecordCard(
+              title: r.text(['title']) ?? r.title,
+              leading: const AdminAvatar(
+                name: '',
+                icon: Icons.notifications_rounded,
+              ),
+              lines: [
+                r.text(['body', 'message']),
+                [
+                  adminDate(r.date(['sent_at', 'created_at'])),
+                  if (recipients != null) '$recipients مستلم',
+                  if (r.nestedName('subject') case final s?) 'مادة $s',
+                ].join(' • '),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

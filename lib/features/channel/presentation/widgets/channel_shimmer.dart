@@ -16,7 +16,8 @@ class ChannelShimmer extends StatelessWidget {
       child: ListView.separated(
         padding: const EdgeInsetsDirectional.all(16),
         itemCount: itemCount,
-        separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.md),
+        separatorBuilder: (context, index) =>
+            const SizedBox(height: AppSpacing.md),
         itemBuilder: (context, index) => const _ChannelCardSkeleton(),
       ),
     );

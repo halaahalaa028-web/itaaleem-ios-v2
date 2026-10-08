@@ -118,7 +118,8 @@ class TeacherPhoto extends StatelessWidget {
       alignment: Alignment.topCenter,
       memCacheWidth: cachePx,
       memCacheHeight: cachePx,
-      placeholder: (context, url) => TeacherPhotoPlaceholder(iconSize: iconSize),
+      placeholder: (context, url) =>
+          TeacherPhotoPlaceholder(iconSize: iconSize),
       errorWidget: (context, url, error) =>
           TeacherPhotoPlaceholder(iconSize: iconSize),
     );

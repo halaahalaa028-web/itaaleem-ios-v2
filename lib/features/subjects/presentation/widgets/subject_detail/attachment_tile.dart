@@ -4,9 +4,17 @@ import 'package:itaaleem/core/theme/app_spacing.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/subject_detail/subject_section.dart';
 
 class AttachmentTileData {
-  const AttachmentTileData({required this.name, this.type, this.sizeLabel});
+  const AttachmentTileData({
+    required this.name,
+    this.type,
+    this.sizeLabel,
+    this.locked = false,
+  });
 
   final String name;
+
+  /// Locked for this student: a lock replaces the open/download button.
+  final bool locked;
 
   /// File extension/type (e.g. "PDF", "docx"); picks the icon.
   final String? type;
@@ -68,10 +76,16 @@ class AttachmentTile extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.sm),
           IconButton.filledTonal(
-            tooltip: onDownload != null ? 'تحميل' : 'فتح',
-            onPressed: onDownload ?? onOpen,
+            tooltip: data.locked
+                ? 'مقفول'
+                : onDownload != null
+                ? 'تحميل'
+                : 'فتح',
+            onPressed: data.locked ? onOpen : onDownload ?? onOpen,
             icon: Icon(
-              onDownload != null
+              data.locked
+                  ? Icons.lock_rounded
+                  : onDownload != null
                   ? Icons.download_rounded
                   : Icons.open_in_new_rounded,
               size: 20,

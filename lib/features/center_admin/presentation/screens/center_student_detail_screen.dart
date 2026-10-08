@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -8,6 +9,7 @@ import 'package:itaaleem/core/widgets/app_progress_bar.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:itaaleem/features/center_admin/data/center_admin_models.dart';
 import 'package:itaaleem/features/center_admin/presentation/widgets/admin_common.dart';
+import 'package:itaaleem/features/center_admin/presentation/widgets/admin_subscription_actions.dart';
 import 'package:itaaleem/features/center_admin/providers/center_admin_providers.dart';
 
 /// `GET /center-admin/students/{id}` — profile, subscriptions (activate /
@@ -33,30 +35,35 @@ class CenterStudentDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(student?.title ?? 'تفاصيل الطالب')),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(centerAdminRecordProvider(_path).future),
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          children: [
-            if (student != null) _ProfileCard(student: student),
-            if (async.isLoading && async.valueOrNull == null) ...[
-              const SizedBox(height: AppSpacing.lg),
-              const ShimmerList(count: 3),
-            ] else if (async.hasError && async.valueOrNull == null)
-              Padding(
-                padding: const EdgeInsets.only(top: AppSpacing.xl),
-                child: AppErrorState(
-                  message: failureOf(async.error!).message,
-                  onRetry: () =>
-                      ref.invalidate(centerAdminRecordProvider(_path)),
-                ),
-              )
-            else if (async.valueOrNull case final full?) ...[
-              _Subscriptions(student: full, path: _path),
-              _Progress(student: full),
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: () {
+            ref.invalidate(centerStudentSubscriptionsProvider(studentId));
+            return ref.refresh(centerAdminRecordProvider(_path).future);
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            children: [
+              if (student != null) _ProfileCard(student: student),
+              if (async.isLoading && async.valueOrNull == null) ...[
+                const SizedBox(height: AppSpacing.lg),
+                const ShimmerList(count: 3),
+              ] else if (async.hasError && async.valueOrNull == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AppSpacing.xl),
+                  child: AppErrorState(
+                    message: failureOf(async.error!).message,
+                    onRetry: () =>
+                        ref.invalidate(centerAdminRecordProvider(_path)),
+                  ),
+                )
+              else if (async.valueOrNull case final full?) ...[
+                _Subscriptions(student: full, studentId: studentId),
+                _Progress(student: full),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -143,21 +150,45 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
+/// `GET students/{id}/subscriptions` — every subscription (active and
+/// cancelled, both kinds); per row: activate/suspend, cancel or
+/// reactivate, plus "إلغاء كل الاشتراكات" for the student.
 class _Subscriptions extends ConsumerWidget {
-  const _Subscriptions({required this.student, required this.path});
+  const _Subscriptions({required this.student, required this.studentId});
 
   final AdminRecord student;
-  final String path;
+  final int studentId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final subs = student.list('subscriptions');
+    final async = ref.watch(centerStudentSubscriptionsProvider(studentId));
+    // The detail payload's own list while the dedicated call loads/fails.
+    final subs = async.valueOrNull ?? student.list('subscriptions');
     final repo = ref.read(centerAdminRepositoryProvider);
+    final scheme = Theme.of(context).colorScheme;
+    final anyActive = subs.any((s) => !isSubscriptionCancelled(s));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AdminSectionTitle('الاشتراكات (${subs.length})'),
-        if (subs.isEmpty)
+        AdminSectionTitle(
+          'الاشتراكات (${subs.length})',
+          action: anyActive
+              ? TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: scheme.error),
+                  onPressed: () => cancelAllStudentSubscriptions(
+                    context,
+                    ref,
+                    studentId: studentId,
+                    studentName: student.title,
+                  ),
+                  icon: const Icon(Icons.block_rounded, size: 18),
+                  label: const Text('إلغاء كل الاشتراكات'),
+                )
+              : null,
+        ),
+        if (async.isLoading && subs.isEmpty)
+          const ShimmerList(count: 2)
+        else if (subs.isEmpty)
           const Text('لا توجد اشتراكات لهذا الطالب')
         else
           for (final s in subs)
@@ -172,23 +203,50 @@ class _Subscriptions extends ConsumerWidget {
                   'من ${adminDate(s.date(['starts_at', 'start_date']))} '
                       'إلى ${adminDate(s.date(['expires_at', 'end_date', 'ends_at']))}',
                 ],
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    adminStatusBadge(s.status),
-                    Switch(
-                      value: s.status == 'active',
-                      onChanged: (on) => runAdminAction(
+                trailing: adminStatusBadge(s.status),
+                menu: [
+                  if (isSubscriptionCancelled(s))
+                    AdminMenuAction(
+                      'إعادة التفعيل',
+                      Icons.restart_alt_rounded,
+                      () => reactivateSubscription(context, ref, s),
+                    )
+                  else ...[
+                    if (s.status == 'active')
+                      AdminMenuAction(
+                        'إيقاف',
+                        Icons.pause_circle_rounded,
+                        () => runAdminAction(
+                          context,
+                          ref,
+                          () => repo.action('subscriptions/${s.id}/suspend'),
+                          success: 'تم إيقاف الاشتراك',
+                        ),
+                      )
+                    else
+                      AdminMenuAction(
+                        'تفعيل',
+                        Icons.play_circle_rounded,
+                        () => runAdminAction(
+                          context,
+                          ref,
+                          () => repo.action('subscriptions/${s.id}/activate'),
+                          success: 'تم تفعيل الاشتراك',
+                        ),
+                      ),
+                    AdminMenuAction(
+                      'إلغاء هذه المادة',
+                      Icons.cancel_rounded,
+                      () => cancelSubscription(
                         context,
                         ref,
-                        () => repo.action(
-                          'subscriptions/${s.id}/${on ? 'activate' : 'suspend'}',
-                        ),
-                        success: on ? 'تم تفعيل الاشتراك' : 'تم إيقاف الاشتراك',
+                        s,
+                        studentName: student.title,
                       ),
+                      destructive: true,
                     ),
                   ],
-                ),
+                ],
               ),
             ),
       ],

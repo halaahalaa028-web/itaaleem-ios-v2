@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -22,16 +23,18 @@ class CenterSettingsScreen extends ConsumerWidget {
     final async = ref.watch(centerAdminRecordProvider(_path));
     return Scaffold(
       appBar: AppBar(title: const Text('إعدادات السنتر')),
-      body: async.when(
-        loading: () => const ShimmerList(count: 4),
-        error: (e, _) => AppErrorState(
-          message: failureOf(e).message,
-          onRetry: () => ref.invalidate(centerAdminRecordProvider(_path)),
-        ),
-        data: (settings) => _SettingsForm(
-          // Rebuilt with fresh values after a save.
-          key: ValueKey(settings.json.hashCode),
-          settings: settings,
+      body: AppBackground(
+        child: async.when(
+          loading: () => const ShimmerList(count: 4),
+          error: (e, _) => AppErrorState(
+            message: failureOf(e).message,
+            onRetry: () => ref.invalidate(centerAdminRecordProvider(_path)),
+          ),
+          data: (settings) => _SettingsForm(
+            // Rebuilt with fresh values after a save.
+            key: ValueKey(settings.json.hashCode),
+            settings: settings,
+          ),
         ),
       ),
     );

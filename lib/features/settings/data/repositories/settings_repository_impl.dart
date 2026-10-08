@@ -19,18 +19,14 @@ class SettingsRepositoryImpl implements SettingsRepository {
     } on DioException catch (e) {
       return Err(_failureOf(e));
     } catch (_) {
-      return const Err(
-        UnknownFailure('حدث خطأ ما، حاول مرة أخرى'),
-      );
+      return const Err(UnknownFailure('حدث خطأ ما، حاول مرة أخرى'));
     }
   }
 
   Failure _failureOf(DioException e) {
     final error = e.error;
     if (error is Failure) return error;
-    return const NetworkFailure(
-      'تعذر الاتصال بالسيرفر، تحقق من الإنترنت',
-    );
+    return const NetworkFailure('تعذر الاتصال بالسيرفر، تحقق من الإنترنت');
   }
 }
 

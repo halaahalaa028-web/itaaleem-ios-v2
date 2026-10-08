@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -104,39 +105,41 @@ class CenterSubjectsScreen extends ConsumerWidget {
         icon: const Icon(Icons.add_rounded),
         label: const Text('مادة جديدة'),
       ),
-      body: AdminDataTable(
-        path: 'subjects',
-        searchHint: 'ابحث باسم المادة',
-        emptyTitle: 'لا توجد مواد بعد',
-        emptyIcon: Icons.menu_book_outlined,
-        bottomPadding: 96,
-        itemBuilder: (context, r) => AdminRecordCard(
-          title: r.title,
-          leading: _subjectImage(context, r),
-          lines: [
-            [
-              if (r.count(['lectures_count', 'lessons_count']) case final n?)
-                '$n محاضرة',
-              if (r.count(['students_count', 'subscribers_count'])
-                  case final n?)
-                '$n طالب',
-            ].join(' • '),
-            if (r.nestedName('teacher') case final t?) 'د. $t',
-          ],
-          onTap: () => context.push(centerAdminSubjectPath(r.id), extra: r),
-          menu: [
-            AdminMenuAction(
-              'تعديل',
-              Icons.edit_rounded,
-              () => _editSubject(context, ref, subject: r),
-            ),
-            AdminMenuAction(
-              'حذف',
-              Icons.delete_rounded,
-              () => _deleteSubject(context, ref, r),
-              destructive: true,
-            ),
-          ],
+      body: AppBackground(
+        child: AdminDataTable(
+          path: 'subjects',
+          searchHint: 'ابحث باسم المادة',
+          emptyTitle: 'لا توجد مواد بعد',
+          emptyIcon: Icons.menu_book_outlined,
+          bottomPadding: 96,
+          itemBuilder: (context, r) => AdminRecordCard(
+            title: r.title,
+            leading: _subjectImage(context, r),
+            lines: [
+              [
+                if (r.count(['lectures_count', 'lessons_count']) case final n?)
+                  '$n محاضرة',
+                if (r.count(['students_count', 'subscribers_count'])
+                    case final n?)
+                  '$n طالب',
+              ].join(' • '),
+              if (r.nestedName('teacher') case final t?) 'د. $t',
+            ],
+            onTap: () => context.push(centerAdminSubjectPath(r.id), extra: r),
+            menu: [
+              AdminMenuAction(
+                'تعديل',
+                Icons.edit_rounded,
+                () => _editSubject(context, ref, subject: r),
+              ),
+              AdminMenuAction(
+                'حذف',
+                Icons.delete_rounded,
+                () => _deleteSubject(context, ref, r),
+                destructive: true,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -183,50 +186,56 @@ class CenterSubjectDetailScreen extends ConsumerWidget {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            AdminDataTable(
-              path: 'lectures',
-              filters: filter,
-              emptyTitle: 'لا توجد محاضرات لهذه المادة',
-              itemBuilder: (context, r) => AdminRecordCard(
-                title: r.title,
-                leading: const AdminAvatar(
-                  name: '',
-                  icon: Icons.play_arrow_rounded,
+        body: AppBackground(
+          child: TabBarView(
+            children: [
+              AdminDataTable(
+                path: 'lectures',
+                filters: filter,
+                emptyTitle: 'لا توجد محاضرات لهذه المادة',
+                itemBuilder: (context, r) => AdminRecordCard(
+                  title: r.title,
+                  leading: const AdminAvatar(
+                    name: '',
+                    icon: Icons.play_arrow_rounded,
+                  ),
+                  lines: [
+                    if (r.number(['views_count', 'views']) case final v?)
+                      '$v مشاهدة',
+                  ],
                 ),
-                lines: [
-                  if (r.number(['views_count', 'views']) case final v?)
-                    '$v مشاهدة',
-                ],
               ),
-            ),
-            AdminDataTable(
-              path: 'exams',
-              filters: filter,
-              emptyTitle: 'لا توجد امتحانات لهذه المادة',
-              itemBuilder: (context, r) => AdminRecordCard(
-                title: r.title,
-                leading: const AdminAvatar(name: '', icon: Icons.quiz_rounded),
-                lines: [
-                  if (r.count(['questions_count']) case final q?) '$q سؤال',
-                ],
-                onTap: () => context.push(centerAdminExamPath(r.id), extra: r),
+              AdminDataTable(
+                path: 'exams',
+                filters: filter,
+                emptyTitle: 'لا توجد امتحانات لهذه المادة',
+                itemBuilder: (context, r) => AdminRecordCard(
+                  title: r.title,
+                  leading: const AdminAvatar(
+                    name: '',
+                    icon: Icons.quiz_rounded,
+                  ),
+                  lines: [
+                    if (r.count(['questions_count']) case final q?) '$q سؤال',
+                  ],
+                  onTap: () =>
+                      context.push(centerAdminExamPath(r.id), extra: r),
+                ),
               ),
-            ),
-            AdminDataTable(
-              path: 'students',
-              filters: filter,
-              emptyTitle: 'لا يوجد طلاب مشتركين في هذه المادة',
-              itemBuilder: (context, r) => AdminRecordCard(
-                title: r.title,
-                leading: AdminAvatar(name: r.title, imageUrl: r.image),
-                lines: [r.phone],
-                onTap: () =>
-                    context.push(centerAdminStudentPath(r.id), extra: r),
+              AdminDataTable(
+                path: 'students',
+                filters: filter,
+                emptyTitle: 'لا يوجد طلاب مشتركين في هذه المادة',
+                itemBuilder: (context, r) => AdminRecordCard(
+                  title: r.title,
+                  leading: AdminAvatar(name: r.title, imageUrl: r.image),
+                  lines: [r.phone],
+                  onTap: () =>
+                      context.push(centerAdminStudentPath(r.id), extra: r),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

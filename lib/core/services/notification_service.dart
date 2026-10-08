@@ -43,7 +43,9 @@ Future<void> _saveMessageToHistory(RemoteMessage message) async {
   try {
     await NotificationHistoryService().add(
       PushNotificationRecord(
-        id: message.messageId ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        id:
+            message.messageId ??
+            DateTime.now().microsecondsSinceEpoch.toString(),
         title: title,
         body: body,
         receivedAt: message.sentTime ?? DateTime.now(),
@@ -81,7 +83,9 @@ class NotificationService {
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('FIREBASE INIT: fail');
-        debugPrint('[NotificationService] Firebase init error: $e\n$stackTrace');
+        debugPrint(
+          '[NotificationService] Firebase init error: $e\n$stackTrace',
+        );
       }
       return;
     }
@@ -105,7 +109,8 @@ class NotificationService {
 
   static Future<void> _recordInitialMessage() async {
     try {
-      final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+      final initialMessage = await FirebaseMessaging.instance
+          .getInitialMessage();
       if (initialMessage != null) await _saveMessageToHistory(initialMessage);
     } catch (e) {
       if (kDebugMode) {

@@ -15,6 +15,7 @@ import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:itaaleem/core/widgets/content_watermark.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -422,7 +423,15 @@ class _LessonVideoScreenState extends ConsumerState<LessonVideoScreen> {
                     ],
                   ),
                 ),
-                Expanded(child: LessonPdfView(pdfUrl: pdfUrl)),
+                Expanded(
+                  child: LessonPdfView(
+                    pdfUrl: pdfUrl,
+                    // Signed link may expire while watching: refreshable.
+                    fileRef: widget.lessonId == null
+                        ? null
+                        : ContentFileRef.lesson(widget.lessonId!, url: pdfUrl),
+                  ),
+                ),
               ],
             ),
           ),

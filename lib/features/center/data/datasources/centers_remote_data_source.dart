@@ -34,7 +34,8 @@ class CentersRemoteDataSource {
     }
     final body = response.data;
     final data = body?['data'];
-    final rawList = _asList(body?['centers']) ??
+    final rawList =
+        _asList(body?['centers']) ??
         _asList(data) ??
         _asList(data is Map<String, dynamic> ? data['items'] : null) ??
         const [];
@@ -54,7 +55,9 @@ class CentersRemoteDataSource {
       );
     }
     final data = response.data?['data'];
-    final body = data is Map<String, dynamic> ? data : (response.data ?? const <String, dynamic>{});
+    final body = data is Map<String, dynamic>
+        ? data
+        : (response.data ?? const <String, dynamic>{});
     return centerModelFromJson(body);
   }
 
@@ -65,14 +68,13 @@ class CentersRemoteDataSource {
   /// caller decides how to surface it.
   Future<void> joinCenter({required String code, int? gradeId}) async {
     if (kDebugMode) {
-      debugPrint('>>> POST ${ApiEndpoints.centerJoin} code=$code grade_id=$gradeId');
+      debugPrint(
+        '>>> POST ${ApiEndpoints.centerJoin} code=$code grade_id=$gradeId',
+      );
     }
     await _dio.post<Map<String, dynamic>>(
       ApiEndpoints.centerJoin,
-      data: {
-        'code': code,
-        if (gradeId != null) 'grade_id': gradeId,
-      },
+      data: {'code': code, if (gradeId != null) 'grade_id': gradeId},
     );
   }
 
@@ -81,7 +83,9 @@ class CentersRemoteDataSource {
   }
 }
 
-final centersRemoteDataSourceProvider = Provider<CentersRemoteDataSource>((ref) {
+final centersRemoteDataSourceProvider = Provider<CentersRemoteDataSource>((
+  ref,
+) {
   final dio = ref.watch(dioClientProvider);
   return CentersRemoteDataSource(dio);
 });

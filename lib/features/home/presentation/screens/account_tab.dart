@@ -18,6 +18,7 @@ import 'package:itaaleem/features/center/presentation/utils/leave_center_dialog.
 import 'package:itaaleem/features/center/presentation/widgets/social_links_bar.dart';
 import 'package:itaaleem/features/settings/presentation/providers/theme_mode_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/utils/platform_utils.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +57,7 @@ class AccountTab extends ConsumerWidget {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
+        backgroundColor: Colors.transparent,
         body: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -74,14 +76,7 @@ class AccountTab extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'روابطك السريعة',
-                    style: TextStyle(
-                      fontFamily: 'Cairo',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+                  const _SectionLabel('روابطك السريعة'),
                   const SizedBox(height: AppSpacing.md),
                   GridView.count(
                     crossAxisCount: 2,
@@ -125,11 +120,12 @@ class AccountTab extends ConsumerWidget {
                         label: 'تغيير كلمة المرور',
                         onTap: () => context.push<void>(changePasswordPath),
                       ),
-                      _MenuTile(
-                        icon: Icons.card_membership_rounded,
-                        label: 'اشتراكاتي',
-                        onTap: () => context.push<void>(mySubscriptionsPath),
-                      ),
+                      if (!PlatformUtils.hideSubscriptions)
+                        _MenuTile(
+                          icon: Icons.card_membership_rounded,
+                          label: 'اشتراكاتي',
+                          onTap: () => context.push<void>(mySubscriptionsPath),
+                        ),
                       // An activated student can still redeem a code for
                       // more subjects — except on iOS, where unlocking
                       // content outside In-App Purchase isn't allowed.
@@ -169,7 +165,24 @@ class AccountTab extends ConsumerWidget {
                     ),
                     if (center.socialLinks.isNotEmpty) ...[
                       const SizedBox(height: AppSpacing.base),
-                      SocialLinksBar(socialLinks: center.socialLinks),
+                      GlassCard(
+                        padding: const EdgeInsets.all(AppSpacing.base),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'تابع السنتر',
+                              style: Theme.of(context).textTheme.labelLarge
+                                  ?.copyWith(
+                                    color: context.palette.textSecondary,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            SocialLinksBar(socialLinks: center.socialLinks),
+                          ],
+                        ),
+                      ),
                     ],
                   ],
                   const SizedBox(height: AppSpacing.lg),
@@ -264,20 +277,26 @@ class _Header extends StatelessWidget {
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: palette.surface,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.shadow.withValues(alpha: 0.2),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
+                    gradient: DesignTokens.brandGradient(
+                      Theme.of(context).colorScheme,
+                    ),
+                    boxShadow: DesignTokens.softShadow(
+                      Theme.of(context).colorScheme,
+                      strength: 1.6,
+                    ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.xs),
-                    child: _ProfileAvatar(student: student),
+                    padding: const EdgeInsets.all(3),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: palette.surface,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: _ProfileAvatar(student: student),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -348,24 +367,11 @@ class _Header extends StatelessWidget {
               ],
               if (centerName != null) ...[
                 const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: palette.primarySurface,
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: Text(
-                    gradeName != null
-                        ? 'منضم لـ $centerName — $gradeName'
-                        : 'منضم لـ $centerName',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: palette.primary),
-                  ),
+                StatusPill(
+                  icon: Icons.school_rounded,
+                  label: gradeName != null
+                      ? 'منضم لـ $centerName — $gradeName'
+                      : 'منضم لـ $centerName',
                 ),
               ],
             ],
@@ -383,14 +389,7 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontFamily: 'Cairo',
-        fontSize: 15,
-        fontWeight: FontWeight.w700,
-      ),
-    );
+    return SectionTitle(title: label, padding: EdgeInsets.zero);
   }
 }
 
@@ -401,11 +400,14 @@ class _MenuCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: context.palette.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: context.palette.border),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: DesignTokens.cardBorder(scheme)),
+        boxShadow: DesignTokens.softShadow(scheme, strength: 0.6),
       ),
       child: Column(
         children: [
@@ -444,8 +446,15 @@ class _MenuTile extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.08),
-          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: AlignmentDirectional.topStart,
+            end: AlignmentDirectional.bottomEnd,
+            colors: [
+              color.withValues(alpha: 0.18),
+              color.withValues(alpha: 0.06),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Icon(icon, size: 20, color: color),
       ),

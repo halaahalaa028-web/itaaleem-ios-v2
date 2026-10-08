@@ -1,3 +1,4 @@
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'package:itaaleem/features/exams/domain/entities/exam.dart';
 import 'package:itaaleem/features/exams/domain/entities/exam_result.dart';
 import 'package:itaaleem/features/subjects/domain/entities/subject.dart';
@@ -13,10 +14,15 @@ class LessonPdfArgs {
     required this.title,
     required this.pdfUrl,
     this.downloadable = false,
+    this.fileRef,
   });
 
   final String title;
   final String? pdfUrl;
+
+  /// Stable identity of a protected (signed-URL) file: cache key + link
+  /// refresh. Null for plain public files.
+  final ContentFileRef? fileRef;
 
   /// Whether the download button is offered (the API's `is_downloadable`).
   final bool downloadable;

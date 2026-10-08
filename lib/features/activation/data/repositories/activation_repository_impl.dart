@@ -19,14 +19,10 @@ class ActivationRepositoryImpl implements ActivationRepository {
       final error = e.error;
       final failure = error is Failure
           ? error
-          : const NetworkFailure(
-              'تعذر الاتصال بالسيرفر، تحقق من الإنترنت',
-            );
+          : const NetworkFailure('تعذر الاتصال بالسيرفر، تحقق من الإنترنت');
       return Err(failure);
     } catch (_) {
-      return const Err(
-        UnknownFailure('حدث خطأ ما، حاول مرة أخرى'),
-      );
+      return const Err(UnknownFailure('حدث خطأ ما، حاول مرة أخرى'));
     }
   }
 }

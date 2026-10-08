@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -188,7 +189,7 @@ class _Results extends ConsumerWidget {
     if (subjects == null) {
       return const Padding(
         padding: EdgeInsets.all(AppSpacing.md),
-        child: Center(child: CircularProgressIndicator()),
+        child: AppShimmer(child: ShimmerCard(thumbnailSize: 40)),
       );
     }
     final results = _search(subjects, query);

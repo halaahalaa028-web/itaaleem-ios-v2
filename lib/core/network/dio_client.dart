@@ -50,8 +50,59 @@ final skipAuthOptions = Options(extra: const {'skipAuth': true});
 ///   final failure = e.error is Failure ? e.error as Failure : const UnknownFailure('...');
 /// }
 /// ```
+/// On a 429 waits the server's `retry_after` (body) / `Retry-After`
+/// (header) seconds — capped, 2s when absent — and retries the request
+/// once. A second 429 falls through to [ErrorMappingInterceptor], which
+/// shows the server's own message.
+class RateLimitRetryInterceptor extends Interceptor {
+  RateLimitRetryInterceptor(this._dio);
+
+  final Dio _dio;
+  static const _retriedKey = 'rate_limit_retried';
+  static const _maxWait = Duration(seconds: 10);
+
+  @override
+  Future<void> onError(
+    DioException err,
+    ErrorInterceptorHandler handler,
+  ) async {
+    final options = err.requestOptions;
+    if (err.response?.statusCode != 429 || options.extra[_retriedKey] == true) {
+      return handler.next(err);
+    }
+    final wait = _retryAfter(err.response!);
+    if (kDebugMode) {
+      debugPrint(
+        '>>> 429 on ${options.path} — retrying once in ${wait.inSeconds}s',
+      );
+    }
+    await Future<void>.delayed(wait);
+    options.extra[_retriedKey] = true;
+    try {
+      handler.resolve(await _dio.fetch<dynamic>(options));
+    } on DioException catch (e) {
+      handler.next(e);
+    }
+  }
+
+  static Duration _retryAfter(Response<dynamic> response) {
+    final data = response.data;
+    final fromBody = data is Map
+        ? num.tryParse('${data['retry_after']}')
+        : null;
+    final seconds =
+        fromBody ?? num.tryParse(response.headers.value('retry-after') ?? '');
+    if (seconds == null || seconds <= 0) return const Duration(seconds: 2);
+    final wait = Duration(milliseconds: (seconds * 1000).round());
+    return wait > _maxWait ? _maxWait : wait;
+  }
+}
+
 class ErrorMappingInterceptor extends Interceptor {
-  ErrorMappingInterceptor(this._unauthorizedEvents, this._centerDeactivatedEvents);
+  ErrorMappingInterceptor(
+    this._unauthorizedEvents,
+    this._centerDeactivatedEvents,
+  );
 
   final UnauthorizedEvents _unauthorizedEvents;
   final CenterDeactivatedEvents _centerDeactivatedEvents;
@@ -88,7 +139,9 @@ class ErrorMappingInterceptor extends Interceptor {
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.transformTimeout:
       case DioExceptionType.connectionError:
-        return const NetworkFailure('تعذر الاتصال، تحقق من الإنترنت وحاول مرة أخرى');
+        return const NetworkFailure(
+          'تعذر الاتصال، تحقق من الإنترنت وحاول مرة أخرى',
+        );
       case DioExceptionType.cancel:
         return const UnknownFailure('تم إلغاء الطلب');
       case DioExceptionType.badCertificate:
@@ -96,7 +149,9 @@ class ErrorMappingInterceptor extends Interceptor {
       case DioExceptionType.badResponse:
         return _mapStatusCode(err);
       case DioExceptionType.unknown:
-        return const NetworkFailure('تعذر الاتصال، تحقق من الإنترنت وحاول مرة أخرى');
+        return const NetworkFailure(
+          'تعذر الاتصال، تحقق من الإنترنت وحاول مرة أخرى',
+        );
     }
   }
 
@@ -122,7 +177,8 @@ class ErrorMappingInterceptor extends Interceptor {
         // subscribed" — never the center being deactivated, whatever the wording.
         final path = err.requestOptions.path;
         final isSubscriptionRelated =
-            path.contains('subscription-requests') || path.contains('lectures/');
+            path.contains('subscription-requests') ||
+            path.contains('lectures/');
         if (!isSubscriptionRelated &&
             !_isAdminPath(path) &&
             _looksLikeCenterDeactivated(message)) {
@@ -134,9 +190,7 @@ class ErrorMappingInterceptor extends Interceptor {
         // `{"success":false,"data":{"mobile":["..."]},"message":"..."}`),
         // not under a separate `data.errors` key — `errors` is kept as a
         // fallback in case some endpoints ever wrap it that way instead.
-        final rawErrors = data is Map
-            ? (data['errors'] ?? data['data'])
-            : null;
+        final rawErrors = data is Map ? (data['errors'] ?? data['data']) : null;
         final fieldErrors = <String, List<String>>{};
         if (rawErrors is Map) {
           rawErrors.forEach((key, value) {
@@ -169,8 +223,10 @@ class ErrorMappingInterceptor extends Interceptor {
           statusCode: 404,
         );
       case 429:
-        return const ServerFailure(
-          'محاولات كثيرة، حاول لاحقاً',
+        return ServerFailure(
+          data is Map && data['message'] is String
+              ? data['message'] as String
+              : 'طلبات كثيرة، حاول بعد لحظات',
           statusCode: 429,
         );
       default:
@@ -218,6 +274,7 @@ final dioClientProvider = Provider<Dio>((ref) {
   );
 
   dio.interceptors.add(AuthInterceptor(secureStorage));
+  dio.interceptors.add(RateLimitRetryInterceptor(dio));
   dio.interceptors.add(
     ErrorMappingInterceptor(
       ref.watch(unauthorizedEventsProvider),

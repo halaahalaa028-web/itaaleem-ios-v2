@@ -5,6 +5,7 @@ import 'package:itaaleem/features/center/presentation/providers/center_providers
 import 'package:itaaleem/features/settings/domain/entities/app_settings.dart';
 import 'package:itaaleem/features/settings/presentation/providers/settings_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/utils/safe_url.dart';
@@ -87,7 +88,10 @@ class SupportScreen extends ConsumerWidget {
     ];
   }
 
-  List<_SupportItem> _platformItems(BuildContext context, AppSettings settings) {
+  List<_SupportItem> _platformItems(
+    BuildContext context,
+    AppSettings settings,
+  ) {
     // No usable number -> no WhatsApp entry at all (rather than opening the
     // bare `https://wa.me/` landing page).
     final waUrl = whatsappUrl(settings.whatsappNumber);
@@ -142,86 +146,98 @@ class SupportScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('الدعم')),
-      body: SafeArea(
-        child: settingsPending
-            ? const ShimmerList(count: 4, thumbnailSize: 44)
-            : ListView(
-                padding: const EdgeInsetsDirectional.all(AppSpacing.screenHorizontal),
-                children: [
-                  Text(
-                    'محتاج مساعدة؟',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+      body: AppBackground(
+        child: SafeArea(
+          child: settingsPending
+              ? const ShimmerList(count: 4, thumbnailSize: 44)
+              : ListView(
+                  padding: const EdgeInsetsDirectional.all(
+                    AppSpacing.screenHorizontal,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'تقدر تتواصل مع فريق الدعم من خلال أي من الطرق دي',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xl),
-                  if (center != null) ...[
+                  children: [
                     Text(
-                      center.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
+                      'محتاج مساعدة؟',
+                      style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    if (centerWhatsapp != null) ...[
-                      FilledButton.icon(
-                        onPressed: () => _open(context, centerWhatsapp),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _whatsappGreen,
-                          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                          minimumSize: const Size.fromHeight(48),
-                        ),
-                        icon: const Icon(Icons.chat_rounded),
-                        label: const Text('محادثة واتساب'),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-                    for (final item in centerItems) ...[
-                      item,
-                      const SizedBox(height: 14),
-                    ],
-                    if (centerItems.isEmpty)
-                      Padding(
-                        padding: const EdgeInsetsDirectional.only(bottom: 14),
-                        child: Text(
-                          'لا تتوفر بيانات تواصل للسنتر حالياً',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.textSecondary),
+                    const SizedBox(height: 6),
+                    Text(
+                      'تقدر تتواصل مع فريق الدعم من خلال أي من الطرق دي',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
                         ),
                       ),
-                    if (platformItems.isNotEmpty) ...[
-                      const SizedBox(height: 10),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    if (center != null) ...[
                       Text(
-                        'دعم المنصة',
+                        center.name,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: AppSpacing.md),
+                      if (centerWhatsapp != null) ...[
+                        FilledButton.icon(
+                          onPressed: () => _open(context, centerWhatsapp),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _whatsappGreen,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onPrimary,
+                            minimumSize: const Size.fromHeight(48),
+                          ),
+                          icon: const Icon(Icons.chat_rounded),
+                          label: const Text('محادثة واتساب'),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                      for (final item in centerItems) ...[
+                        item,
+                        const SizedBox(height: 14),
+                      ],
+                      if (centerItems.isEmpty)
+                        Padding(
+                          padding: const EdgeInsetsDirectional.only(bottom: 14),
+                          child: Text(
+                            'لا تتوفر بيانات تواصل للسنتر حالياً',
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: context.palette.textSecondary,
+                                ),
+                          ),
+                        ),
+                      if (platformItems.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          'دعم المنصة',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                      ],
                     ],
-                  ],
-                  for (final item in platformItems) ...[
-                    item,
-                    const SizedBox(height: 14),
-                  ],
-                  if (nothingToShow && center == null)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(top: 12),
-                      child: Text(
-                        settingsAsync.hasError
-                            ? 'تعذر تحميل بيانات الدعم'
-                            : 'لا تتوفر بيانات تواصل حالياً',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.textSecondary),
+                    for (final item in platformItems) ...[
+                      item,
+                      const SizedBox(height: 14),
+                    ],
+                    if (nothingToShow && center == null)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(top: 12),
+                        child: Text(
+                          settingsAsync.hasError
+                              ? 'تعذر تحميل بيانات الدعم'
+                              : 'لا تتوفر بيانات تواصل حالياً',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: context.palette.textSecondary),
+                        ),
                       ),
-                    ),
-                ],
-              ),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -271,9 +287,9 @@ class _SupportItem extends StatelessWidget {
                   children: [
                     Text(
                       label,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 3),
                     Text(

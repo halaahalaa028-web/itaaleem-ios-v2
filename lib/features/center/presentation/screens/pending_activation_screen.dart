@@ -1,6 +1,7 @@
 import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
@@ -15,10 +16,12 @@ class PendingActivationScreen extends ConsumerStatefulWidget {
   const PendingActivationScreen({super.key});
 
   @override
-  ConsumerState<PendingActivationScreen> createState() => _PendingActivationScreenState();
+  ConsumerState<PendingActivationScreen> createState() =>
+      _PendingActivationScreenState();
 }
 
-class _PendingActivationScreenState extends ConsumerState<PendingActivationScreen> {
+class _PendingActivationScreenState
+    extends ConsumerState<PendingActivationScreen> {
   bool _refreshing = false;
   bool _loggingOut = false;
 
@@ -59,114 +62,127 @@ class _PendingActivationScreenState extends ConsumerState<PendingActivationScree
     return PopScope(
       canPop: false,
       child: Scaffold(
-        body: DecoratedBox(
-          decoration: BoxDecoration(gradient: context.palette.brandGradient),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsetsDirectional.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: context.palette.gold.withValues(alpha: 0.22),
-                      shape: BoxShape.circle,
+        body: AppBackground(
+          child: DecoratedBox(
+            decoration: BoxDecoration(gradient: context.palette.brandGradient),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsetsDirectional.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: context.palette.gold.withValues(alpha: 0.22),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.hourglass_top_rounded,
+                        color: context.palette.gold,
+                        size: 52,
+                      ),
                     ),
-                    child: Icon(
-                      Icons.hourglass_top_rounded,
-                      color: context.palette.gold,
-                      size: 52,
+                    const SizedBox(height: 28),
+                    Text(
+                      'في انتظار التفعيل',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: context.palette.onPrimary,
+                            fontWeight: FontWeight.w800,
+                          ),
                     ),
-                  ),
-                  const SizedBox(height: 28),
-                  Text(
-                    'في انتظار التفعيل',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: context.palette.onPrimary,
-                      fontWeight: FontWeight.w800,
+                    const SizedBox(height: AppSpacing.md),
+                    Text(
+                      'تم تسجيل طلبك بنجاح. في انتظار التفعيل من إدارة السنتر.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: context.palette.onPrimary.withValues(alpha: 0.9),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    'تم تسجيل طلبك بنجاح. في انتظار التفعيل من إدارة السنتر.',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: context.palette.onPrimary.withValues(alpha: 0.9),
+                    const SizedBox(height: 6),
+                    Text(
+                      'سيتم إشعارك فور تفعيل حسابك',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.palette.onPrimary.withValues(alpha: 0.7),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'سيتم إشعارك فور تفعيل حسابك',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: context.palette.onPrimary.withValues(alpha: 0.7),
+                    const SizedBox(height: 36),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _refreshing ? null : _refreshStatus,
+                        icon: _refreshing
+                            ? SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: context.palette.primary,
+                                ),
+                              )
+                            : const Icon(Icons.refresh_rounded),
+                        label: const Text('تحديث الحالة'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: context.palette.onPrimary,
+                          foregroundColor: context.palette.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 36),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _refreshing ? null : _refreshStatus,
-                      icon: _refreshing
+                    const SizedBox(height: AppSpacing.md),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => context.push(contactCenterPath),
+                        icon: Icon(
+                          Icons.phone_in_talk_rounded,
+                          color: context.palette.onPrimary,
+                        ),
+                        label: Text(
+                          'تواصل مع السنتر',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: context.palette.onPrimary),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: context.palette.onPrimary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+                    TextButton.icon(
+                      onPressed: _loggingOut ? null : _logout,
+                      icon: _loggingOut
                           ? SizedBox(
-                              width: 18,
-                              height: 18,
+                              width: 16,
+                              height: 16,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: context.palette.primary,
+                                color: context.palette.onPrimary,
                               ),
                             )
-                          : const Icon(Icons.refresh_rounded),
-                      label: const Text('تحديث الحالة'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: context.palette.onPrimary,
-                        foregroundColor: context.palette.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.push(contactCenterPath),
-                      icon: Icon(Icons.phone_in_talk_rounded, color: context.palette.onPrimary),
-                      label: Text(
-                        'تواصل مع السنتر',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.onPrimary),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: BorderSide(color: context.palette.onPrimary),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  TextButton.icon(
-                    onPressed: _loggingOut ? null : _logout,
-                    icon: _loggingOut
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: context.palette.onPrimary,
+                          : Icon(
+                              Icons.logout_rounded,
+                              color: context.palette.onPrimary.withValues(
+                                alpha: 0.7,
+                              ),
+                              size: 18,
                             ),
-                          )
-                        : Icon(
-                            Icons.logout_rounded,
-                            color: context.palette.onPrimary.withValues(alpha: 0.7),
-                            size: 18,
+                      label: Text(
+                        'تسجيل خروج',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: context.palette.onPrimary.withValues(
+                            alpha: 0.7,
                           ),
-                    label: Text(
-                      'تسجيل خروج',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: context.palette.onPrimary.withValues(alpha: 0.7)),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

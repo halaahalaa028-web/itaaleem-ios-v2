@@ -6,6 +6,7 @@ import 'package:itaaleem/features/home/presentation/widgets/communication_shimme
 import 'package:itaaleem/features/settings/domain/entities/app_settings.dart';
 import 'package:itaaleem/features/settings/presentation/providers/settings_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/utils/platform_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/utils/safe_url.dart';
@@ -14,6 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
+
 /// "التواصل" tab (formerly "تفعيل كود"): big, platform-colored contact
 /// buttons from `GET /public/settings`, hiding whichever are null. Code
 /// activation moves down to a small button at the bottom, opened via
@@ -34,19 +36,21 @@ class CommunicationTab extends ConsumerWidget {
         automaticallyImplyLeading: false,
         title: const Text('التواصل'),
       ),
-      body: SafeArea(
-        child: settingsAsync.when(
-          loading: () => const Padding(
-            padding: EdgeInsetsDirectional.all(AppSpacing.screenHorizontal),
-            child: CommunicationShimmer(),
-          ),
-          error: (_, _) => _CommunicationBody(
-            items: const [],
-            onActivateTap: _activateTap,
-          ),
-          data: (settings) => _CommunicationBody(
-            items: _itemsOf(context, settings),
-            onActivateTap: _activateTap,
+      body: AppBackground(
+        child: SafeArea(
+          child: settingsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsetsDirectional.all(AppSpacing.screenHorizontal),
+              child: CommunicationShimmer(),
+            ),
+            error: (_, _) => _CommunicationBody(
+              items: const [],
+              onActivateTap: _activateTap,
+            ),
+            data: (settings) => _CommunicationBody(
+              items: _itemsOf(context, settings),
+              onActivateTap: _activateTap,
+            ),
           ),
         ),
       ),
@@ -131,7 +135,9 @@ class _CommunicationBody extends StatelessWidget {
       children: [
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsetsDirectional.all(AppSpacing.screenHorizontal),
+            padding: const EdgeInsetsDirectional.all(
+              AppSpacing.screenHorizontal,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -182,7 +188,9 @@ class _CommunicationBody extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xl),
                 if (items.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: AppSpacing.xl,
+                    ),
                     child: Center(
                       child: Text(
                         'تعذر تحميل وسائل التواصل، حاول مرة أخرى',
@@ -216,17 +224,17 @@ class _CommunicationBody extends StatelessWidget {
           ),
         ),
         if (onActivateTap != null)
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 20),
-          child: OutlinedButton.icon(
-            onPressed: onActivateTap,
-            icon: const Icon(Icons.qr_code_rounded, size: 18),
-            label: const Text('تفعيل كود'),
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(20, 0, 20, 20),
+            child: OutlinedButton.icon(
+              onPressed: onActivateTap,
+              icon: const Icon(Icons.qr_code_rounded, size: 18),
+              label: const Text('تفعيل كود'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+              ),
             ),
           ),
-        ),
       ],
     );
   }

@@ -13,8 +13,8 @@ class AppRadius {
   // Named aliases
   /// Buttons sit between inputs (12) and cards (16), so a button inside a
   /// card still reads as nested.
-  static const double button = 14;
-  static const double card = lg;
+  static const double button = 16;
+  static const double card = xl;
   static const double input = md;
   static const double dialog = xl;
   static const double bottomSheet = xxl;

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design_tokens.dart';
 import 'package:itaaleem/core/theme/app_palette.dart';
+import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 
 enum AppButtonVariant { primary, secondary, text }
@@ -62,7 +64,7 @@ class _AppButtonState extends State<AppButton>
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: AppMotion.press,
-    lowerBound: 0.95,
+    lowerBound: 0.97,
     upperBound: 1.0,
     value: 1.0,
   );
@@ -103,7 +105,10 @@ class _AppButtonState extends State<AppButton>
             return SizedBox(
               width: widget.expand && bounded ? double.infinity : null,
               height: 52,
-              child: _buildContent(context, fillWidth: widget.expand && bounded),
+              child: _buildContent(
+                context,
+                fillWidth: widget.expand && bounded,
+              ),
             );
           },
         ),
@@ -138,16 +143,40 @@ class _AppButtonState extends State<AppButton>
 
     switch (widget.variant) {
       case AppButtonVariant.primary:
-        return ElevatedButton(
-          onPressed: _enabled ? widget.onPressed : null,
-          // A loading button keeps its brand color instead of greying out.
-          style: ElevatedButton.styleFrom(
-            minimumSize: minimumSize,
-            disabledBackgroundColor: widget.loading
-                ? context.palette.primary.withValues(alpha: 0.7)
-                : null,
+        // Brand gradient fill (primary → secondary) with a soft glow; a
+        // loading button keeps its gradient instead of greying out.
+        final scheme = Theme.of(context).colorScheme;
+        final active = widget.onPressed != null || widget.loading;
+        return AnimatedOpacity(
+          duration: AppMotion.short,
+          opacity: active ? 1 : 0.55,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: DesignTokens.brandGradient(scheme),
+              borderRadius: BorderRadius.circular(AppRadius.button),
+              boxShadow: _enabled
+                  ? [
+                      BoxShadow(
+                        color: scheme.primary.withValues(alpha: 0.3),
+                        blurRadius: 18,
+                        spreadRadius: -6,
+                        offset: const Offset(0, 8),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: ElevatedButton(
+              onPressed: _enabled ? widget.onPressed : null,
+              style: ElevatedButton.styleFrom(
+                minimumSize: minimumSize,
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                disabledBackgroundColor: Colors.transparent,
+                disabledForegroundColor: scheme.onPrimary,
+              ),
+              child: label,
+            ),
           ),
-          child: label,
         );
       case AppButtonVariant.secondary:
         return OutlinedButton(

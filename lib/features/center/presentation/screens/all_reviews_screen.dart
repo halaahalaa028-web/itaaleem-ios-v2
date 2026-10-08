@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/error/failure.dart';
@@ -45,48 +46,49 @@ class _AllReviewsScreenState extends ConsumerState<AllReviewsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('كل التقييمات')),
-      body: async.when(
-        loading: () => const ShimmerList(count: 4, thumbnailSize: 40),
-        error: (e, _) => ErrorView(
-          message: failureOf(e).message,
-          retryLabel: 'إعادة المحاولة',
-          onRetry: () =>
-              ref.invalidate(reviewsControllerProvider(widget.centerId)),
-        ),
-        data: (state) {
-          if (state.items.isEmpty) {
-            return const Center(child: Text('لا توجد تقييمات بعد'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async =>
-                ref.refresh(reviewsControllerProvider(widget.centerId).future),
-            child: ListView.separated(
-              controller: _scroll,
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              itemCount: state.items.length + (state.hasMore ? 1 : 0),
-              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.listItemSpacing),
-              itemBuilder: (context, i) {
-                if (i >= state.items.length) {
-                  return const Padding(
-                    padding: EdgeInsets.all(AppSpacing.md),
-                    child: Center(child: CircularProgressIndicator()),
+      body: AppBackground(
+        child: async.when(
+          loading: () => const ShimmerList(count: 4, thumbnailSize: 40),
+          error: (e, _) => ErrorView(
+            message: failureOf(e).message,
+            retryLabel: 'إعادة المحاولة',
+            onRetry: () =>
+                ref.invalidate(reviewsControllerProvider(widget.centerId)),
+          ),
+          data: (state) {
+            if (state.items.isEmpty) {
+              return const Center(child: Text('لا توجد تقييمات بعد'));
+            }
+            return RefreshIndicator(
+              onRefresh: () async => ref.refresh(
+                reviewsControllerProvider(widget.centerId).future,
+              ),
+              child: ListView.separated(
+                controller: _scroll,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                itemCount: state.items.length + (state.hasMore ? 1 : 0),
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: AppSpacing.listItemSpacing),
+                itemBuilder: (context, i) {
+                  if (i >= state.items.length) {
+                    return const AppShimmer(child: ShimmerCard());
+                  }
+                  final r = state.items[i];
+                  return KeyedSubtree(
+                    key: ValueKey(r.id),
+                    child: ReviewCard(
+                      review: r,
+                      trailing: r.isOwner
+                          ? OwnReviewMenu(centerId: widget.centerId, review: r)
+                          : null,
+                    ),
                   );
-                }
-                final r = state.items[i];
-                return KeyedSubtree(
-                  key: ValueKey(r.id),
-                  child: ReviewCard(
-                    review: r,
-                    trailing: r.isOwner
-                        ? OwnReviewMenu(centerId: widget.centerId, review: r)
-                        : null,
-                  ),
-                );
-              },
-            ),
-          );
-        },
+                },
+              ),
+            );
+          },
+        ),
       ),
     );
   }

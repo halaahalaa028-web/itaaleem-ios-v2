@@ -1,3 +1,4 @@
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
@@ -19,9 +20,21 @@ import 'package:itaaleem/core/theme/app_spacing.dart';
 /// disk (re-opening a large file is then instant), and shown from that file
 /// with pdfrx. A failure shows a clear message with a retry.
 class LessonPdfView extends ConsumerStatefulWidget {
-  const LessonPdfView({super.key, required this.pdfUrl});
+  const LessonPdfView({super.key, required this.pdfUrl, this.fileRef});
 
   final String? pdfUrl;
+
+  /// For signed (expiring) URLs: the cache key and link refresh source.
+  final ContentFileRef? fileRef;
+
+  /// Drops [ref]'s cached copy — used when the API reports it locked.
+  static Future<void> evictCache(ContentFileRef ref) async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final f = File('${dir.path}/pdf_cache/${ref.cacheKey}.pdf');
+      if (await f.exists()) await f.delete();
+    } catch (_) {}
+  }
 
   @override
   ConsumerState<LessonPdfView> createState() => _LessonPdfViewState();
@@ -31,6 +44,7 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
   File? _file;
   double? _progress;
   bool _failed = false;
+  String? _lockedMessage;
   CancelToken? _cancelToken;
   final _pdfController = PdfViewerController();
 
@@ -46,9 +60,12 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
     super.dispose();
   }
 
+  /// Keyed by the file's identity, not its URL: signed URLs change on every
+  /// response, which would re-download (and duplicate) the same file.
   Future<File> _cacheFileFor(String url) async {
     final dir = await getTemporaryDirectory();
-    return File('${dir.path}/pdf_cache/${url.hashCode.toUnsigned(32)}.pdf');
+    final key = widget.fileRef?.cacheKey ?? '${url.hashCode.toUnsigned(32)}';
+    return File('${dir.path}/pdf_cache/$key.pdf');
   }
 
   static bool _pruned = false;
@@ -90,12 +107,14 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
   }
 
   Future<void> _load() async {
-    final url = widget.pdfUrl;
-    if (url == null || url.isEmpty) return;
+    final url = widget.pdfUrl ?? '';
+    final fileRef = widget.fileRef;
+    if (url.isEmpty && fileRef == null) return;
     await _pruneCache();
     if (!mounted) return;
     setState(() {
       _failed = false;
+      _lockedMessage = null;
       _progress = null;
     });
     try {
@@ -112,27 +131,43 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
       await target.parent.create(recursive: true);
       final partial = File('${target.path}.part');
       _cancelToken = CancelToken();
-      await ref
-          .read(dioClientProvider)
-          .download(
-            url,
-            partial.path,
-            cancelToken: _cancelToken,
-            onReceiveProgress: (received, total) {
-              if (total <= 0 || !mounted) return;
-              final next = received / total;
-              // Repaint at ~1% steps instead of on every network chunk.
-              if (_progress == null || next - _progress! >= 0.01) {
-                setState(() => _progress = next);
-              }
-            },
-          );
+      void onProgress(int received, int total) {
+        if (total <= 0 || !mounted) return;
+        final next = received / total;
+        // Repaint at ~1% steps instead of on every network chunk.
+        if (_progress == null || next - _progress! >= 0.01) {
+          setState(() => _progress = next);
+        }
+      }
+
+      final dio = ref.read(dioClientProvider);
+      if (fileRef != null) {
+        // Refreshes an expired signed link (and retries once on a 403).
+        await downloadContentFile(
+          dio,
+          fileRef,
+          partial.path,
+          cancelToken: _cancelToken,
+          onReceiveProgress: onProgress,
+        );
+      } else {
+        await dio.download(
+          url,
+          partial.path,
+          cancelToken: _cancelToken,
+          onReceiveProgress: onProgress,
+        );
+      }
       if (!await _isValidPdf(partial)) {
         await partial.delete();
         throw const FormatException('downloaded file is not a valid PDF');
       }
       await partial.rename(target.path);
       if (mounted) setState(() => _file = target);
+    } on ContentLockedException catch (e) {
+      // No access (anymore): never show a stale cached copy.
+      if (fileRef != null) await LessonPdfView.evictCache(fileRef);
+      if (mounted) setState(() => _lockedMessage = e.displayMessage);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     }
@@ -173,8 +208,19 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
   @override
   Widget build(BuildContext context) {
     final url = widget.pdfUrl;
-    if (url == null || url.isEmpty) {
+    if ((url == null || url.isEmpty) && widget.fileRef == null) {
       return const _Message(text: 'لا يوجد ملف لهذا الدرس بعد');
+    }
+    final locked = _lockedMessage;
+    if (locked != null) {
+      return _Message(
+        text: locked,
+        action: Icon(
+          Icons.lock_rounded,
+          size: 40,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+      );
     }
     if (_failed) {
       return _Message(

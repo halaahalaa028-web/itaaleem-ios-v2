@@ -81,6 +81,17 @@ class ApiEndpoints {
   /// `exams` arrays.
   static String subjectDetails(int id) => '/subjects/$id';
 
+  /// `GET /subjects/{id}/progress` — `{progress: {"<lessonId>": {
+  /// watched_seconds, total_seconds, percentage, completed, ...}}}`, one
+  /// key per active lecture (zeros, not null, when never watched). Replaces
+  /// a `/lessons/{id}/progress` call per lecture.
+  static String subjectProgress(int id) => '/subjects/$id/progress';
+
+  /// `GET /subjects/{id}/exams` — the subject's exams. Exams belong to the
+  /// subject on the server (no lesson_id), so this one call covers every
+  /// lecture of it.
+  static String subjectExams(int id) => '/subjects/$id/exams';
+
   /// `GET /lessons?subject_id=&limit=` — flat array of the same lesson
   /// shape embedded in `GET /subjects/{id}`.
   static const String lessons = '/lessons';
@@ -184,6 +195,12 @@ class ApiEndpoints {
   // --- Attachments ---
   /// `GET /attachments?subject_id=` — a subject's downloadable files.
   static const String attachments = '/attachments';
+
+  /// `GET /lessons/{id}/file-link` / `GET /attachments/{id}/link` — a fresh
+  /// signed `{url, download_url, expires_at}` (the signed `file_url` is only
+  /// valid for ~10 minutes and is bound to the student).
+  static String lessonFileLink(int id) => '/lessons/$id/file-link';
+  static String attachmentLink(int id) => '/attachments/$id/link';
 
   // --- Banners ---
   /// `GET /banners` — the joined center's home-screen banners.

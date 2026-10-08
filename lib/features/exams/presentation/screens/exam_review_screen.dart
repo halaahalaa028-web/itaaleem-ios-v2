@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/app/router/route_args.dart';
@@ -49,7 +50,9 @@ class ExamReviewScreen extends ConsumerWidget {
     return review.when(
       loading: () => Scaffold(
         appBar: AppBar(title: Text(title)),
-        body: const ShimmerDetail(heroHeight: 0, cards: 5),
+        body: AppBackground(
+          child: const ShimmerDetail(heroHeight: 0, cards: 5),
+        ),
       ),
       error: (error, _) {
         final local = args.result;
@@ -61,9 +64,12 @@ class ExamReviewScreen extends ConsumerWidget {
         }
         return Scaffold(
           appBar: AppBar(title: Text(title)),
-          body: AppErrorState(
-            message: failureOf(error).message,
-            onRetry: () => ref.invalidate(examAttemptReviewProvider(attemptId)),
+          body: AppBackground(
+            child: AppErrorState(
+              message: failureOf(error).message,
+              onRetry: () =>
+                  ref.invalidate(examAttemptReviewProvider(attemptId)),
+            ),
           ),
         );
       },
@@ -189,106 +195,113 @@ class _ReviewScaffoldState extends State<_ReviewScaffold> {
     if (items.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: Text(widget.title)),
-        body: const AppEmptyState(
-          icon: Icons.fact_check_rounded,
-          title: 'لا توجد إجابات لمراجعتها',
+        body: AppBackground(
+          child: const AppEmptyState(
+            icon: Icons.fact_check_rounded,
+            title: 'لا توجد إجابات لمراجعتها',
+          ),
         ),
       );
     }
 
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 56,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.base,
-                vertical: AppSpacing.sm,
-              ),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.sm),
-              itemBuilder: (context, i) {
-                final ok = items[i].review.isCorrect;
-                final color = ok ? palette.success : cs.error;
-                return InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => _go(i),
-                  child: Container(
-                    width: 40,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: color.withValues(alpha: 0.15),
-                      border: Border.all(
-                        color: i == _index ? color : Colors.transparent,
-                        width: 2,
+      body: AppBackground(
+        child: Column(
+          children: [
+            SizedBox(
+              height: 56,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.base,
+                  vertical: AppSpacing.sm,
+                ),
+                itemCount: items.length,
+                separatorBuilder: (_, _) =>
+                    const SizedBox(width: AppSpacing.sm),
+                itemBuilder: (context, i) {
+                  final ok = items[i].review.isCorrect;
+                  final color = ok ? palette.success : cs.error;
+                  return InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () => _go(i),
+                    child: Container(
+                      width: 40,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color.withValues(alpha: 0.15),
+                        border: Border.all(
+                          color: i == _index ? color : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Text(
+                        '${i + 1}',
+                        style: text.labelLarge?.copyWith(color: color),
                       ),
                     ),
-                    child: Text(
-                      '${i + 1}',
-                      style: text.labelLarge?.copyWith(color: color),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: items.length,
-              onPageChanged: (i) => setState(() => _index = i),
-              itemBuilder: (context, i) {
-                final item = items[i];
-                return ExamQuestionView(
-                  key: ValueKey(item.question.id),
-                  question: item.question,
-                  index: i,
-                  total: items.length,
-                  selectedOptionId: item.selectedOptionId,
-                  textAnswer: item.textAnswer,
-                  review: item.review,
-                );
-              },
-            ),
-          ),
-          SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.base),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _index > 0 ? () => _go(_index - 1) : null,
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      label: const Text('السابق'),
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _index < items.length - 1
-                          ? () => _go(_index + 1)
-                          : () => Navigator.of(context).maybePop(),
-                      icon: Icon(
-                        _index < items.length - 1
-                            ? Icons.arrow_forward_rounded
-                            : Icons.check_rounded,
-                      ),
-                      label: Text(
-                        _index < items.length - 1 ? 'التالي' : 'إنهاء المراجعة',
-                      ),
-                    ),
-                  ),
-                ],
+                  );
+                },
               ),
             ),
-          ),
-        ],
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: items.length,
+                onPageChanged: (i) => setState(() => _index = i),
+                itemBuilder: (context, i) {
+                  final item = items[i];
+                  return ExamQuestionView(
+                    key: ValueKey(item.question.id),
+                    question: item.question,
+                    index: i,
+                    total: items.length,
+                    selectedOptionId: item.selectedOptionId,
+                    textAnswer: item.textAnswer,
+                    review: item.review,
+                  );
+                },
+              ),
+            ),
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.base),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _index > 0 ? () => _go(_index - 1) : null,
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('السابق'),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _index < items.length - 1
+                            ? () => _go(_index + 1)
+                            : () => Navigator.of(context).maybePop(),
+                        icon: Icon(
+                          _index < items.length - 1
+                              ? Icons.arrow_forward_rounded
+                              : Icons.check_rounded,
+                        ),
+                        label: Text(
+                          _index < items.length - 1
+                              ? 'التالي'
+                              : 'إنهاء المراجعة',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

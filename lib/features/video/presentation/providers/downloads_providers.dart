@@ -6,11 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// progress/status updates (written by `OfflineDownloadManager` straight
 /// into the same `OfflineDatabase` row) show up live with no manual
 /// invalidation.
-final downloadedVideosProvider = StreamProvider.autoDispose<List<OfflineVideo>>((
-  ref,
-) {
-  return ref.watch(offlineDatabaseProvider).watchAll();
-});
+final downloadedVideosProvider = StreamProvider.autoDispose<List<OfflineVideo>>(
+  (ref) {
+    return ref.watch(offlineDatabaseProvider).watchAll();
+  },
+);
 
 /// One lesson's download row, if any — drives the download button on
 /// [LecturePlayerScreen] (queued/downloading/paused/completed/failed/

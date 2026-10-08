@@ -18,11 +18,14 @@ class TeachersRemoteDataSource {
       ApiEndpoints.teachers,
     );
     if (kDebugMode) {
-      debugPrint('>>> GET ${ApiEndpoints.teachers} raw response: ${response.data}');
+      debugPrint(
+        '>>> GET ${ApiEndpoints.teachers} raw response: ${response.data}',
+      );
     }
     final body = response.data;
     final envelope = body?['data'];
-    final rawList = (body?['teachers'] is List ? body!['teachers'] as List : null) ??
+    final rawList =
+        (body?['teachers'] is List ? body!['teachers'] as List : null) ??
         (envelope is List ? envelope : null) ??
         (envelope is Map<String, dynamic> && envelope['items'] is List
             ? envelope['items'] as List

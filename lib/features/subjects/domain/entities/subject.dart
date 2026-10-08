@@ -1,3 +1,5 @@
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
+
 /// One lesson of a [Subject] — `GET /subjects` embeds these on the detail
 /// call, and `GET /lessons?subject_id=` returns the same shape standalone.
 class SubjectLesson {
@@ -17,7 +19,41 @@ class SubjectLesson {
     this.teacherId,
     this.teacherName,
     this.examsCount,
+    this.isLockedFlag,
+    this.hasFileFlag,
+    this.pdfDownloadUrl,
+    this.pdfOpenUrl,
+    this.pdfUrlExpiresAt,
   });
+
+  /// The API's `is_locked` — when true, no file/video URLs are sent.
+  final bool? isLockedFlag;
+
+  /// The API's `has_file` — a PDF exists even when its URL is withheld.
+  final bool? hasFileFlag;
+
+  /// Signed `download_url` (null when not downloadable or locked).
+  final String? pdfDownloadUrl;
+
+  /// Token-authenticated `open_url` (`/lessons/{id}/file`).
+  final String? pdfOpenUrl;
+
+  /// `url_expires_at` of the signed [pdfUrl] (~10 minutes).
+  final DateTime? pdfUrlExpiresAt;
+
+  /// A PDF exists for this lesson (even if locked).
+  bool get hasPdfFile => hasPdf || (hasFileFlag ?? false);
+
+  /// The lesson's PDF exists but this student can't open it.
+  bool get pdfLocked => hasPdfFile && ((isLockedFlag ?? false) || !hasPdf);
+
+  /// Identifies the PDF independently of the (changing) signed URL.
+  ContentFileRef get pdfRef => ContentFileRef.lesson(
+    id,
+    url: pdfUrl,
+    downloadUrl: pdfDownloadUrl,
+    expiresAt: pdfUrlExpiresAt,
+  );
 
   /// The lecture's own doctor, when the API sends `teacher_id`/`teacher`.
   final int? teacherId;
@@ -91,9 +127,40 @@ class SubjectAttachment {
     this.type,
     this.lessonId,
     this.isDownloadable = false,
+    this.isLocked = false,
+    this.source,
+    this.downloadUrl,
+    this.expiresAt,
   });
 
+  /// 0 when the API sends `id: null` (e.g. `source: lesson_pdf`).
   final int id;
+
+  /// The API's `is_locked` — the URL is withheld; opening shows the lock.
+  final bool isLocked;
+
+  /// `source` (e.g. `lesson_pdf` for the lesson's own file).
+  final String? source;
+  final String? downloadUrl;
+  final DateTime? expiresAt;
+
+  /// Stable identity for caching / refreshing the signed link: the
+  /// attachment id, or — for an id-less lesson PDF — its lesson.
+  ContentFileRef? get ref => id > 0
+      ? ContentFileRef.attachment(
+          id,
+          url: url.isEmpty ? null : url,
+          downloadUrl: downloadUrl,
+          expiresAt: expiresAt,
+        )
+      : lessonId != null
+      ? ContentFileRef.lesson(
+          lessonId!,
+          url: url.isEmpty ? null : url,
+          downloadUrl: downloadUrl,
+          expiresAt: expiresAt,
+        )
+      : null;
   final String name;
   final String url;
 

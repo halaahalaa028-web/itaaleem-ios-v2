@@ -1,3 +1,4 @@
+import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/app/theme/app_theme.dart';
@@ -14,7 +15,10 @@ class LessonPdfScreen extends ConsumerWidget {
     required this.title,
     required this.pdfUrl,
     this.downloadable = false,
+    this.fileRef,
   });
+
+  final ContentFileRef? fileRef;
 
   final String title;
   final String? pdfUrl;
@@ -38,16 +42,22 @@ class LessonPdfScreen extends ConsumerWidget {
             style: const TextStyle(fontFamily: 'Cairo', fontSize: 15),
           ),
           actions: [
-            if (downloadable && url != null && url.isNotEmpty)
+            if (downloadable &&
+                ((url != null && url.isNotEmpty) || fileRef != null))
               IconButton(
                 tooltip: 'تحميل',
                 icon: const Icon(Icons.download_rounded),
-                onPressed: () =>
-                    downloadPdf(context, ref, url: url, title: title),
+                onPressed: () => downloadPdf(
+                  context,
+                  ref,
+                  url: url ?? '',
+                  title: title,
+                  fileRef: fileRef,
+                ),
               ),
           ],
         ),
-        body: LessonPdfView(pdfUrl: url),
+        body: LessonPdfView(pdfUrl: url, fileRef: fileRef),
       ),
     );
   }

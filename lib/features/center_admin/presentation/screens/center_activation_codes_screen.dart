@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
+import 'package:itaaleem/core/widgets/app_shimmer.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/core/error/failure.dart';
@@ -24,7 +26,9 @@ class CenterActivationCodesScreen extends ConsumerWidget {
       showDragHandle: true,
       builder: (_) => const _CreateCodeSheet(),
     );
-    if (created == null || !context.mounted) return;
+    if (created == null) return;
+    await waitForRouteExit();
+    if (!context.mounted) return;
     ref.invalidate(centerActivationCodesProvider);
     await showDialog<void>(
       context: context,
@@ -44,62 +48,64 @@ class CenterActivationCodesScreen extends ConsumerWidget {
         icon: const Icon(Icons.add_rounded),
         label: const Text('إنشاء كود تفعيل'),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(centerActivationCodesProvider.future),
-        child: async.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => _Message(
-            icon: Icons.cloud_off_rounded,
-            text: failureOf(e).message,
-          ),
-          data: (codes) => codes.isEmpty
-              ? const _Message(
-                  icon: Icons.vpn_key_outlined,
-                  text: 'لا توجد أكواد بعد — أنشئ أول كود',
-                )
-              : ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                    96,
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(centerActivationCodesProvider.future),
+          child: async.when(
+            loading: () => const ShimmerList(count: 5, thumbnailSize: 44),
+            error: (e, _) => _Message(
+              icon: Icons.cloud_off_rounded,
+              text: failureOf(e).message,
+            ),
+            data: (codes) => codes.isEmpty
+                ? const _Message(
+                    icon: Icons.vpn_key_outlined,
+                    text: 'لا توجد أكواد بعد — أنشئ أول كود',
+                  )
+                : ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      96,
+                    ),
+                    itemCount: codes.length,
+                    separatorBuilder: (_, _) =>
+                        const SizedBox(height: AppSpacing.sm),
+                    itemBuilder: (context, i) {
+                      final r = codes[i];
+                      final code = codeOf(r) ?? '—';
+                      final subjects = r
+                          .list('subjects')
+                          .map((s) => s.title)
+                          .join('، ');
+                      final months = r.count(['duration_months']);
+                      final usedBy =
+                          r.nestedName('student') ?? r.nestedName('used_by');
+                      return AdminRecordCard(
+                        title: code,
+                        leading: AdminAvatar(
+                          name: '',
+                          icon: Icons.vpn_key_rounded,
+                        ),
+                        lines: [
+                          if (subjects.isNotEmpty) subjects,
+                          [
+                            if (months != null) '$months شهر',
+                            if (usedBy != null) 'استخدمه: $usedBy',
+                            adminDate(r.date(['created_at'])),
+                          ].join(' • '),
+                        ],
+                        trailing: IconButton(
+                          tooltip: 'نسخ',
+                          icon: Icon(Icons.copy_rounded, color: scheme.primary),
+                          onPressed: () => _copy(context, code),
+                        ),
+                      );
+                    },
                   ),
-                  itemCount: codes.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: AppSpacing.sm),
-                  itemBuilder: (context, i) {
-                    final r = codes[i];
-                    final code = codeOf(r) ?? '—';
-                    final subjects = r
-                        .list('subjects')
-                        .map((s) => s.title)
-                        .join('، ');
-                    final months = r.count(['duration_months']);
-                    final usedBy =
-                        r.nestedName('student') ?? r.nestedName('used_by');
-                    return AdminRecordCard(
-                      title: code,
-                      leading: AdminAvatar(
-                        name: '',
-                        icon: Icons.vpn_key_rounded,
-                      ),
-                      lines: [
-                        if (subjects.isNotEmpty) subjects,
-                        [
-                          if (months != null) '$months شهر',
-                          if (usedBy != null) 'استخدمه: $usedBy',
-                          adminDate(r.date(['created_at'])),
-                        ].join(' • '),
-                      ],
-                      trailing: IconButton(
-                        tooltip: 'نسخ',
-                        icon: Icon(Icons.copy_rounded, color: scheme.primary),
-                        onPressed: () => _copy(context, code),
-                      ),
-                    );
-                  },
-                ),
+          ),
         ),
       ),
     );
@@ -176,7 +182,7 @@ class _CreateCodeSheetState extends ConsumerState<_CreateCodeSheet> {
             ),
             const AdminSectionTitle('المواد'),
             subjectsAsync.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => const ShimmerBox(height: 40, radius: 999),
               error: (e, _) => Text(failureOf(e).message),
               data: (subjects) => Wrap(
                 spacing: AppSpacing.sm,

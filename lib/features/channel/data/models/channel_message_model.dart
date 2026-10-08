@@ -16,7 +16,9 @@ class ChannelMessageModel extends ChannelMessage {
   factory ChannelMessageModel.fromJson(Map<String, dynamic> json) {
     return ChannelMessageModel(
       id: _asInt(json['id']),
-      text: _asNonEmpty(json['text'] ?? json['body'] ?? json['message'] ?? json['content']),
+      text: _asNonEmpty(
+        json['text'] ?? json['body'] ?? json['message'] ?? json['content'],
+      ),
       imageUrl: ApiEndpoints.mediaUrl(
         (json['image'] ?? json['image_url'] ?? json['photo']) as String?,
       ),

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itaaleem/features/center_admin/data/center_admin_models.dart';
 import 'package:itaaleem/features/center_admin/presentation/center_admin_routes.dart';
 import 'package:itaaleem/features/center_admin/presentation/widgets/admin_common.dart';
+import 'package:itaaleem/features/center_admin/presentation/widgets/admin_subscription_actions.dart';
 import 'package:itaaleem/features/center_admin/presentation/widgets/admin_data_table.dart';
 import 'package:itaaleem/features/center_admin/providers/center_admin_providers.dart';
 
@@ -42,19 +44,25 @@ class CenterStudentsScreen extends ConsumerWidget {
             ],
           ),
         ),
-        body: const TabBarView(
-          children: [_AllStudents(), _ActiveSubscribers(), _PendingRequests()],
+        body: AppBackground(
+          child: const TabBarView(
+            children: [
+              _AllStudents(),
+              _ActiveSubscribers(),
+              _PendingRequests(),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _AllStudents extends StatelessWidget {
+class _AllStudents extends ConsumerWidget {
   const _AllStudents();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     return AdminDataTable(
       path: 'students',
@@ -92,6 +100,24 @@ class _AllStudents extends StatelessWidget {
                   label: Text('$active'),
                 ),
           onTap: () => context.push(centerAdminStudentPath(r.id), extra: r),
+          menu: [
+            AdminMenuAction(
+              'تفاصيل الطالب',
+              Icons.person_rounded,
+              () => context.push(centerAdminStudentPath(r.id), extra: r),
+            ),
+            AdminMenuAction(
+              'إلغاء كل الاشتراكات',
+              Icons.block_rounded,
+              () => cancelAllStudentSubscriptions(
+                context,
+                ref,
+                studentId: r.id,
+                studentName: r.title,
+              ),
+              destructive: true,
+            ),
+          ],
         );
       },
     );
@@ -108,11 +134,11 @@ List<String?> _subscriptionLines(AdminRecord r, {required String dateLabel}) {
   ];
 }
 
-class _ActiveSubscribers extends StatelessWidget {
+class _ActiveSubscribers extends ConsumerWidget {
   const _ActiveSubscribers();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return AdminDataTable(
       path: 'subscriptions',
       filters: const {'status': 'active'},
@@ -136,6 +162,26 @@ class _ActiveSubscribers extends StatelessWidget {
           onTap: studentId == null
               ? null
               : () => context.push(centerAdminStudentPath(studentId)),
+          menu: [
+            AdminMenuAction(
+              'إلغاء هذه المادة',
+              Icons.cancel_rounded,
+              () => cancelSubscription(context, ref, r, studentName: name),
+              destructive: true,
+            ),
+            if (studentId != null)
+              AdminMenuAction(
+                'إلغاء كل اشتراكات الطالب',
+                Icons.block_rounded,
+                () => cancelAllStudentSubscriptions(
+                  context,
+                  ref,
+                  studentId: studentId,
+                  studentName: name,
+                ),
+                destructive: true,
+              ),
+          ],
         );
       },
     );

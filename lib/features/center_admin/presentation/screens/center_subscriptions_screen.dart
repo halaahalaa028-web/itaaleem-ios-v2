@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/features/center_admin/data/center_admin_models.dart';
 import 'package:itaaleem/features/center_admin/presentation/widgets/admin_common.dart';
 import 'package:itaaleem/features/center_admin/presentation/widgets/admin_data_table.dart';
+import 'package:itaaleem/features/center_admin/presentation/widgets/admin_subscription_actions.dart';
 import 'package:itaaleem/features/center_admin/providers/center_admin_providers.dart';
 
 /// `GET /center-admin/subscriptions?status=` — tabs الكل / نشط / منتهي,
@@ -15,6 +17,7 @@ class CenterSubscriptionsScreen extends ConsumerWidget {
     ('الكل', null),
     ('نشط', 'active'),
     ('منتهي', 'expired'),
+    ('ملغي', 'cancelled'),
   ];
 
   Future<void> _activateNew(BuildContext context, WidgetRef ref) async {
@@ -74,19 +77,21 @@ class CenterSubscriptionsScreen extends ConsumerWidget {
           icon: const Icon(Icons.add_card_rounded),
           label: const Text('تفعيل اشتراك'),
         ),
-        body: TabBarView(
-          children: [
-            for (final (_, status) in _tabs)
-              AdminDataTable(
-                path: 'subscriptions',
-                filters: {'status': status},
-                searchHint: 'ابحث باسم الطالب',
-                emptyTitle: 'لا توجد اشتراكات',
-                emptyIcon: Icons.card_membership_outlined,
-                bottomPadding: 96,
-                itemBuilder: (context, r) => _SubscriptionCard(record: r),
-              ),
-          ],
+        body: AppBackground(
+          child: TabBarView(
+            children: [
+              for (final (_, status) in _tabs)
+                AdminDataTable(
+                  path: 'subscriptions',
+                  filters: {'status': status},
+                  searchHint: 'ابحث باسم الطالب',
+                  emptyTitle: 'لا توجد اشتراكات',
+                  emptyIcon: Icons.card_membership_outlined,
+                  bottomPadding: 96,
+                  itemBuilder: (context, r) => _SubscriptionCard(record: r),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -153,6 +158,8 @@ class _SubscriptionCard extends ConsumerWidget {
 
   String get _studentName => record.nestedName('student') ?? record.title;
 
+  bool get _isCancelled => isSubscriptionCancelled(record);
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final r = record;
@@ -199,19 +206,32 @@ class _SubscriptionCard extends ConsumerWidget {
               success: 'تم إيقاف الاشتراك',
             ),
           ),
-        AdminMenuAction(
-          'إلغاء',
-          Icons.cancel_rounded,
-          () => _simple(
-            context,
-            ref,
-            action: 'cancel',
-            title: 'إلغاء الاشتراك',
-            success: 'تم إلغاء الاشتراك',
+        if (_isCancelled)
+          AdminMenuAction(
+            'إعادة التفعيل',
+            Icons.restart_alt_rounded,
+            () => reactivateSubscription(context, ref, r),
+          )
+        else
+          AdminMenuAction(
+            'إلغاء هذه المادة',
+            Icons.cancel_rounded,
+            () =>
+                cancelSubscription(context, ref, r, studentName: _studentName),
             destructive: true,
           ),
-          destructive: true,
-        ),
+        if (r.nestedId('student') case final studentId?)
+          AdminMenuAction(
+            'إلغاء كل اشتراكات الطالب',
+            Icons.block_rounded,
+            () => cancelAllStudentSubscriptions(
+              context,
+              ref,
+              studentId: studentId,
+              studentName: _studentName,
+            ),
+            destructive: true,
+          ),
       ],
     );
   }

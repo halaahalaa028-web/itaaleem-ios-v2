@@ -33,7 +33,9 @@ class BrandingController extends Notifier<Branding> {
   @override
   Branding build() {
     final loggedOut = ref.watch(
-      authControllerProvider.select((a) => !a.isLoading && a.valueOrNull == null),
+      authControllerProvider.select(
+        (a) => !a.isLoading && a.valueOrNull == null,
+      ),
     );
     if (loggedOut) {
       _stored = null;

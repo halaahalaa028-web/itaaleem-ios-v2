@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:itaaleem/core/error/failure.dart';
@@ -197,12 +198,10 @@ class _CenterHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.base),
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
+    return GlassCard(
+      gradient: DesignTokens.brandGradient(scheme),
+      radius: DesignTokens.radiusHero,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: Row(
         children: [
           AdminAvatar(
@@ -222,13 +221,13 @@ class _CenterHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: text.titleLarge?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: scheme.onPrimaryContainer,
+                    color: scheme.onPrimary,
                   ),
                 ),
                 Text(
                   'لوحة تحكم مدير السنتر',
                   style: text.bodySmall?.copyWith(
-                    color: scheme.onPrimaryContainer.withValues(alpha: 0.8),
+                    color: scheme.onPrimary.withValues(alpha: 0.85),
                   ),
                 ),
               ],
@@ -324,16 +323,10 @@ class _StatsGrid extends StatelessWidget {
       children: [
         for (final (icon, label, keys, tone, path) in cards)
           s == null
-              ? Card(
-                  elevation: 1,
-                  margin: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
-                  ),
-                  child: const Padding(
-                    padding: EdgeInsets.all(AppSpacing.md),
-                    child: AdminStatCardShimmer(),
-                  ),
+              ? const GlassCard(
+                  radius: AppRadius.xl,
+                  padding: EdgeInsets.all(AppSpacing.md),
+                  child: AdminStatCardShimmer(),
                 )
               : AdminStatCard(
                   icon: icon,
@@ -395,11 +388,14 @@ class _PendingRequestsSection extends StatelessWidget {
     final data = async.valueOrNull;
     if (data == null || data.items.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      color: scheme.primaryContainer.withValues(alpha: 0.35),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+      child: GlassCard(
+        color: Color.alphaBlend(
+          scheme.primaryContainer.withValues(alpha: 0.35),
+          scheme.surface,
+        ),
+        borderColor: scheme.primary.withValues(alpha: 0.3),
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -417,10 +413,11 @@ class _PendingRequestsSection extends StatelessWidget {
                     ),
                   ),
                 ),
-                Badge(
-                  label: Text('${data.total}'),
-                  backgroundColor: scheme.error,
-                  textColor: scheme.onError,
+                StatusPill(
+                  label: '${data.total} جديد',
+                  color: scheme.error,
+                  filled: true,
+                  dense: true,
                 ),
                 TextButton(
                   style: TextButton.styleFrom(minimumSize: const Size(48, 36)),

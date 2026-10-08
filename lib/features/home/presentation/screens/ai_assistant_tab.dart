@@ -110,7 +110,9 @@ class _AiChatBodyState extends ConsumerState<_AiChatBody> {
     if (question.isEmpty || _sending) return;
 
     final courses = ref.read(coursesProvider).valueOrNull;
-    final courseId = (courses != null && courses.isNotEmpty) ? courses.first.id : null;
+    final courseId = (courses != null && courses.isNotEmpty)
+        ? courses.first.id
+        : null;
 
     setState(() {
       _messages.add(_ChatMessage(text: question, isUser: true));
@@ -157,7 +159,8 @@ class _AiChatBodyState extends ConsumerState<_AiChatBody> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (_remainingQuestions != null) _RemainingBanner(count: _remainingQuestions!),
+        if (_remainingQuestions != null)
+          _RemainingBanner(count: _remainingQuestions!),
         Expanded(
           child: _messages.isEmpty
               ? const _EmptyChatHint()
@@ -200,11 +203,7 @@ class _RemainingBanner extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.bolt_rounded,
-            size: 16,
-            color: context.palette.primary,
-          ),
+          Icon(Icons.bolt_rounded, size: 16, color: context.palette.primary),
           const SizedBox(width: 6),
           Text(
             'الأسئلة المتبقية اليوم: $count',
@@ -381,7 +380,9 @@ class _ChatInput extends StatelessWidget {
                 decoration: InputDecoration(
                   hintText: 'اكتب سؤالك هنا...',
                   filled: true,
-                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  fillColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
                   contentPadding: const EdgeInsetsDirectional.symmetric(
                     horizontal: AppSpacing.base,
                     vertical: AppSpacing.md,

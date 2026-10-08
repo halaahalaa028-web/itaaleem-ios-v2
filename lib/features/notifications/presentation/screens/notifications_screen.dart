@@ -11,6 +11,7 @@ import 'package:itaaleem/features/notifications/data/dummy_notifications.dart';
 import 'package:itaaleem/features/notifications/domain/entities/app_notification.dart';
 import 'package:itaaleem/features/notifications/presentation/providers/notifications_providers.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/fade_slide_in.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -122,19 +123,21 @@ class NotificationsScreen extends ConsumerWidget {
             tabs: [for (final label in labels) Tab(text: label)],
           ),
         ),
-        body: isDemo
-            ? TabBarView(
-                children: [
-                  for (final category in _tabs.values)
-                    _DemoNotificationList(category: category),
-                ],
-              )
-            : TabBarView(
-                children: [
-                  for (final type in _realTabs.values)
-                    _RealNotificationList(type: type),
-                ],
-              ),
+        body: AppBackground(
+          child: isDemo
+              ? TabBarView(
+                  children: [
+                    for (final category in _tabs.values)
+                      _DemoNotificationList(category: category),
+                  ],
+                )
+              : TabBarView(
+                  children: [
+                    for (final type in _realTabs.values)
+                      _RealNotificationList(type: type),
+                  ],
+                ),
+        ),
       ),
     );
   }
@@ -370,70 +373,87 @@ class _RealNotificationCard extends ConsumerWidget {
               ? null
               : scheme.primary.withValues(alpha: 0.3),
           onTap: () => _open(context, ref),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _iconBackgroundFor(context, item.type),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _iconFor(item.type),
-                  size: 20,
-                  color: _iconColorFor(context, item.type),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: textTheme.titleSmall?.copyWith(
-                        fontWeight: item.isRead
-                            ? FontWeight.w600
-                            : FontWeight.w800,
-                        color: scheme.onSurface,
-                      ),
+          // Read notifications sit back visually.
+          child: AnimatedOpacity(
+            duration: DesignTokens.normal,
+            opacity: item.isRead ? 0.62 : 1,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: _iconBackgroundFor(context, item.type),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: _iconColorFor(
+                        context,
+                        item.type,
+                      ).withValues(alpha: 0.2),
                     ),
-                    if (item.body != null) ...[
-                      const SizedBox(height: 2),
+                  ),
+                  child: Icon(
+                    _iconFor(item.type),
+                    size: 22,
+                    color: _iconColorFor(context, item.type),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        item.body!,
+                        item.title,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
+                        style: textTheme.titleSmall?.copyWith(
+                          fontWeight: item.isRead
+                              ? FontWeight.w600
+                              : FontWeight.w800,
+                          color: scheme.onSurface,
+                        ),
+                      ),
+                      if (item.body != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          item.body!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: AppSpacing.xs),
+                      Text(
+                        _timeAgo(item.createdAt),
+                        style: textTheme.labelSmall?.copyWith(
+                          color: scheme.outline,
                         ),
                       ),
                     ],
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      _timeAgo(item.createdAt),
-                      style: textTheme.labelSmall?.copyWith(
-                        color: scheme.outline,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (!item.isRead)
-                Container(
-                  width: 10,
-                  height: 10,
-                  margin: const EdgeInsetsDirectional.only(start: 8, top: 4),
-                  decoration: BoxDecoration(
-                    color: scheme.primary,
-                    shape: BoxShape.circle,
                   ),
                 ),
-            ],
+                if (!item.isRead)
+                  Container(
+                    width: 10,
+                    height: 10,
+                    margin: const EdgeInsetsDirectional.only(start: 8, top: 4),
+                    decoration: BoxDecoration(
+                      gradient: DesignTokens.brandGradient(scheme),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: scheme.primary.withValues(alpha: 0.5),
+                          blurRadius: 6,
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),

@@ -6,6 +6,7 @@ import 'package:itaaleem/features/auth/presentation/providers/auth_controller.da
 import 'package:itaaleem/features/auth/presentation/widgets/auth_text_field.dart';
 import 'package:itaaleem/features/auth/presentation/widgets/pick_profile_image.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -113,112 +114,118 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('تعديل الملف الشخصي')),
-      body: SafeArea(
-        bottom: false,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600),
-            child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // --- Photo ---------------------------------------------
-                    Center(
-                      child: Semantics(
-                        button: true,
-                        label: 'تغيير الصورة الشخصية',
-                        child: StudentAvatar(
-                          radius: 52,
-                          avatarUrl: student?.avatarUrl,
-                          localFile: _pickedImage != null
-                              ? File(_pickedImage!.path)
-                              : null,
-                          onTap: _showImageSourceSheet,
-                          showCameraBadge: true,
+      body: AppBackground(
+        child: SafeArea(
+          bottom: false,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 600),
+              child: SingleChildScrollView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.all(AppSpacing.screenHorizontal),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // --- Photo ---------------------------------------------
+                      Center(
+                        child: Semantics(
+                          button: true,
+                          label: 'تغيير الصورة الشخصية',
+                          child: StudentAvatar(
+                            radius: 52,
+                            avatarUrl: student?.avatarUrl,
+                            localFile: _pickedImage != null
+                                ? File(_pickedImage!.path)
+                                : null,
+                            onTap: _showImageSourceSheet,
+                            showCameraBadge: true,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Center(
-                      child: TextButton.icon(
-                        onPressed: _showImageSourceSheet,
-                        icon: const Icon(Icons.photo_camera_rounded, size: 18),
-                        label: const Text('تغيير الصورة'),
+                      const SizedBox(height: AppSpacing.sm),
+                      Center(
+                        child: TextButton.icon(
+                          onPressed: _showImageSourceSheet,
+                          icon: const Icon(
+                            Icons.photo_camera_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('تغيير الصورة'),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: AppSpacing.base),
+                      const SizedBox(height: AppSpacing.base),
 
-                    // --- Personal info -------------------------------------
-                    _SectionCard(
-                      title: 'البيانات الشخصية',
-                      icon: Icons.person_rounded,
-                      children: [
-                        AuthTextField(
-                          controller: _fullNameController,
-                          label: 'الاسم الكامل',
-                          icon: Icons.badge_rounded,
-                          textInputAction: TextInputAction.next,
-                          validator: _required,
-                        ),
-                        const SizedBox(height: AppSpacing.base),
-                        AuthTextField(
-                          controller: _emailController,
-                          label: 'البريد الإلكتروني (اختياري)',
-                          icon: Icons.email_rounded,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          validator: _validateEmail,
-                        ),
-                        const SizedBox(height: AppSpacing.base),
-                        AuthTextField(
-                          controller: _mobileController,
-                          label: 'رقم الهاتف',
-                          icon: Icons.phone_iphone_rounded,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.done,
-                          validator: _validateMobile,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.base),
-
-                    // --- Security ------------------------------------------
-                    _SectionCard(
-                      title: 'الأمان',
-                      icon: Icons.shield_rounded,
-                      children: [
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(
-                            Icons.lock_reset_rounded,
-                            color: scheme.primary,
+                      // --- Personal info -------------------------------------
+                      _SectionCard(
+                        title: 'البيانات الشخصية',
+                        icon: Icons.person_rounded,
+                        children: [
+                          AuthTextField(
+                            controller: _fullNameController,
+                            label: 'الاسم الكامل',
+                            icon: Icons.badge_rounded,
+                            textInputAction: TextInputAction.next,
+                            validator: _required,
                           ),
-                          title: Text('كلمة المرور', style: text.titleSmall),
-                          subtitle: Text(
-                            'غيّر كلمة المرور الخاصة بحسابك',
-                            style: text.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
+                          const SizedBox(height: AppSpacing.base),
+                          AuthTextField(
+                            controller: _emailController,
+                            label: 'البريد الإلكتروني (اختياري)',
+                            icon: Icons.email_rounded,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            validator: _validateEmail,
+                          ),
+                          const SizedBox(height: AppSpacing.base),
+                          AuthTextField(
+                            controller: _mobileController,
+                            label: 'رقم الهاتف',
+                            icon: Icons.phone_iphone_rounded,
+                            keyboardType: TextInputType.phone,
+                            textInputAction: TextInputAction.done,
+                            validator: _validateMobile,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.base),
+
+                      // --- Security ------------------------------------------
+                      _SectionCard(
+                        title: 'الأمان',
+                        icon: Icons.shield_rounded,
+                        children: [
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              Icons.lock_reset_rounded,
+                              color: scheme.primary,
+                            ),
+                            title: Text('كلمة المرور', style: text.titleSmall),
+                            subtitle: Text(
+                              'غيّر كلمة المرور الخاصة بحسابك',
+                              style: text.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                            // The theme's minimumSize is `Size.fromHeight`
+                            // (infinite width) — impossible in a ListTile
+                            // trailing slot; that threw and left the page blank.
+                            trailing: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(72, 40),
+                              ),
+                              onPressed: () => context.push(changePasswordPath),
+                              child: const Text('تغيير'),
                             ),
                           ),
-                          // The theme's minimumSize is `Size.fromHeight`
-                          // (infinite width) — impossible in a ListTile
-                          // trailing slot; that threw and left the page blank.
-                          trailing: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size(72, 40),
-                            ),
-                            onPressed: () => context.push(changePasswordPath),
-                            child: const Text('تغيير'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                    ],
+                  ),
                 ),
               ),
             ),
