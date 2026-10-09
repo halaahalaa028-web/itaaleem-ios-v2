@@ -22,9 +22,12 @@ import UserNotifications
     // default app configured here (from GoogleService-Info.plist).
     // Without the plist in the bundle `configure()` raises an uncaught
     // NSException (instant launch crash) — skip Firebase instead.
-    if FirebaseApp.app() == nil,
-      Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
-      FirebaseApp.configure()
+    if FirebaseApp.app() == nil {
+      if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
+        FirebaseApp.configure()
+      } else {
+        NSLog("[Firebase] GoogleService-Info.plist missing — push disabled")
+      }
     }
     // Lets firebase_messaging / flutter_local_notifications present
     // notifications while the app is in the foreground and handle taps.

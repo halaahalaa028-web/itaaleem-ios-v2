@@ -16,7 +16,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {
+    // Firebase unavailable — nothing more to do for this push.
+    return;
+  }
   await _saveMessageToHistory(message);
 }
 
