@@ -14,8 +14,9 @@ enum SecurityEvent {
 /// (`MainActivity.kt` / `AppDelegate.swift`):
 ///
 /// * Android — `FLAG_SECURE` (screenshots and recordings come out black).
-/// * iOS — screenshots can't be blocked, so capture is *detected*:
-///   `UIScreen.isCaptured` (recording / mirroring / AirPlay) and
+/// * iOS — `ScreenProtector` (secure text-field layer): protected screens
+///   come out black in screenshots / recordings / AirPlay. Capture is also
+///   *detected* as a fallback: `UIScreen.isCaptured` and
 ///   `userDidTakeScreenshotNotification`, pushed back as
 ///   `onCaptureChanged(bool)` / `onScreenshot`.
 ///
@@ -37,6 +38,9 @@ class ScreenSecurityService {
     _ensureListening();
     return _events.stream;
   }
+
+  /// Whether a protected screen is currently showing.
+  static bool get isProtected => _secureCount > 0;
 
   /// Last known "screen is being recorded/mirrored" state (iOS).
   static bool get isCaptured => _isCaptured;
@@ -80,6 +84,7 @@ class ScreenSecurityService {
         case 'onCaptureChanged':
           _setCaptured(call.arguments == true);
         case 'onScreenshot':
+          if (!isProtected) return null;
           _log(SecurityEvent.screenshot);
           _events.add(SecurityEvent.screenshot);
       }

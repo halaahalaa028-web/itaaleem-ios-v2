@@ -9,8 +9,10 @@ import 'package:itaaleem/core/theme/app_spacing.dart';
 /// * Android — `FLAG_SECURE` for as long as it's mounted (screenshots and
 ///   recordings come out black), re-applied when the app resumes, and
 ///   switched off once the last protected screen is left.
-/// * iOS — while the screen is being recorded or mirrored, the content is
-///   covered by a notice; a screenshot shows a warning toast. The child stays
+/// * iOS — the native `ScreenProtector` makes the content black in
+///   screenshots / recordings (not on the device itself); while recorded or
+///   mirrored it is also covered by a notice, and a screenshot shows a
+///   warning toast. The child stays
 ///   mounted under the cover, so a playing video keeps its state.
 class SecureScreen extends StatefulWidget {
   const SecureScreen({super.key, required this.child, this.enabled = true});

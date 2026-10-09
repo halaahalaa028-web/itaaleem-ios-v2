@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 
 import 'package:itaaleem/core/error/failure.dart';
@@ -412,3 +413,74 @@ final joinedCenterProvider = Provider<CenterModel?>((ref) {
         : null,
   );
 });
+
+const _contactCenterCacheKey = 'contact_center_cache';
+
+/// What [ContactCenterScreen] shows: the center plus whether it came from
+/// the last-good local copy because the network failed.
+typedef ContactCenterInfo = ({CenterModel center, bool fromCache});
+
+/// The student's own center for the "تواصل مع المركز" screen.
+///
+/// `GET /centers/{id}` 404s for any center but the student's own (and for
+/// every id before joining), so this asks `GET /center/support-info` first
+/// and only falls back to `/centers/{membership.centerId}`. Each request is
+/// capped at 10s. Whatever succeeds is cached in [SharedPreferences]; if both
+/// fail, the cached copy is returned with `fromCache: true`, and with no
+/// cache the error propagates so the screen shows retry instead of loading
+/// forever.
+final contactCenterInfoProvider = FutureProvider.autoDispose<ContactCenterInfo>(
+  (ref) async {
+    if (ref.watch(isDemoSessionProvider)) {
+      final membership = await ref.watch(centerMembershipProvider.future);
+      final center = membership == null
+          ? null
+          : ref.read(centerByIdProvider(membership.centerId));
+      if (center == null) throw StateError('no demo center');
+      return (center: center, fromCache: false);
+    }
+
+    final remote = ref.read(centersRemoteDataSourceProvider);
+    const timeout = Duration(seconds: 10);
+    final prefs = await SharedPreferences.getInstance();
+    Object? lastError;
+
+    Future<ContactCenterInfo?> attempt(
+      Future<Map<String, dynamic>> Function() fetch,
+    ) async {
+      try {
+        final json = await fetch().timeout(timeout);
+        final center = centerModelFromJson(json);
+        if (center.name.isEmpty && center.phoneNumbers.isEmpty) return null;
+        await prefs.setString(_contactCenterCacheKey, jsonEncode(json));
+        return (center: center, fromCache: false);
+      } catch (e) {
+        lastError = e;
+        if (kDebugMode) debugPrint('[contactCenterInfo] $e');
+        return null;
+      }
+    }
+
+    final fromSupport = await attempt(remote.getSupportInfoJson);
+    if (fromSupport != null) return fromSupport;
+
+    CenterMembership? membership;
+    try {
+      membership = await ref.read(centerMembershipProvider.future);
+    } catch (_) {}
+    if (membership != null) {
+      final id = membership.centerId;
+      final fromDetails = await attempt(() => remote.getCenterDetailsJson(id));
+      if (fromDetails != null) return fromDetails;
+    }
+
+    final cached = prefs.getString(_contactCenterCacheKey);
+    if (cached != null) {
+      try {
+        final json = jsonDecode(cached) as Map<String, dynamic>;
+        return (center: centerModelFromJson(json), fromCache: true);
+      } catch (_) {}
+    }
+    throw lastError ?? StateError('no center');
+  },
+);

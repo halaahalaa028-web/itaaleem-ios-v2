@@ -42,6 +42,10 @@ class ApiEndpoints {
   static const String centers = '/centers';
   static String centerDetails(int id) => '/centers/$id';
 
+  /// `GET /center/support-info` — the logged-in student's own center
+  /// contact details (no id: resolved server-side from the token).
+  static const String centerSupportInfo = '/center/support-info';
+
   /// `GET/POST /centers/{id}/reviews`, `PUT/DELETE /centers/{id}/reviews/{reviewId}`.
   static String centerReviews(int id) => '/centers/$id/reviews';
   static String centerReview(int id, int reviewId) =>

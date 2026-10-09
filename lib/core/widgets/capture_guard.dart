@@ -68,7 +68,10 @@ class _CaptureGuardState extends State<CaptureGuard>
       case SecurityEvent.screenshot:
         final context = rootNavigatorKey.currentContext;
         if (context != null) {
-          AppToast.showError(context, 'التقاط الشاشة غير مسموح');
+          AppToast.showError(
+            context,
+            'تصوير الشاشة غير مسموح لحماية المحتوى',
+          );
         }
     }
   }

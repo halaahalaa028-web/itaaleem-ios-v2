@@ -2,6 +2,7 @@ import 'package:itaaleem/core/theme/app_colors.dart';
 import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/core/widgets/app_button.dart';
 import 'package:itaaleem/core/widgets/app_toast.dart';
+import 'package:itaaleem/core/widgets/error_view.dart';
 import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
 import 'package:itaaleem/features/center/presentation/utils/center_color.dart';
 import 'package:itaaleem/features/center/presentation/utils/leave_center_dialog.dart';
@@ -17,9 +18,10 @@ import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 
-/// Reads the currently-joined center off [centerMembershipProvider] rather
-/// than taking a `centerId` — this screen only ever makes sense for the
-/// center the student is already in.
+/// The student's own center, via [contactCenterInfoProvider] (no
+/// `centerId` argument — every entry point, locked lecture/PDF, account and
+/// support, opens it the same way). Shows retry on failure, never an
+/// endless skeleton.
 class ContactCenterScreen extends ConsumerWidget {
   const ContactCenterScreen({super.key});
 
@@ -40,12 +42,20 @@ class ContactCenterScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final membership = ref.watch(centerMembershipProvider).valueOrNull;
-    final center = membership == null
-        ? null
-        : ref.watch(centerByIdProvider(membership.centerId));
+    final info = ref.watch(contactCenterInfoProvider);
+    final data = info.valueOrNull;
 
-    if (center == null) {
+    if (data == null) {
+      if (info.hasError) {
+        return Scaffold(
+          appBar: AppBar(title: const Text('تواصل مع السنتر')),
+          body: ErrorView(
+            message: 'تعذر تحميل بيانات التواصل، تأكد من الاتصال وحاول مرة أخرى',
+            retryLabel: 'إعادة المحاولة',
+            onRetry: () => ref.invalidate(contactCenterInfoProvider),
+          ),
+        );
+      }
       return const Scaffold(
         body: AppBackground(
           child: SafeArea(child: ShimmerDetail(heroHeight: 120)),
@@ -53,6 +63,7 @@ class ContactCenterScreen extends ConsumerWidget {
       );
     }
 
+    final center = data.center;
     final color = parseCenterColor(center.primaryColor);
 
     return Scaffold(
@@ -62,6 +73,20 @@ class ContactCenterScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.all(AppSpacing.lg),
             children: [
+              if (data.fromCache) ...[
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.cloud_off_rounded),
+                    title: const Text('تعذر التحديث — دي آخر بيانات محفوظة'),
+                    trailing: TextButton(
+                      onPressed: () =>
+                          ref.invalidate(contactCenterInfoProvider),
+                      child: const Text('إعادة المحاولة'),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
               Row(
                 children: [
                   Container(

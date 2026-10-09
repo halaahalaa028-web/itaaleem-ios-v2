@@ -61,6 +61,37 @@ class CentersRemoteDataSource {
     return centerModelFromJson(body);
   }
 
+  /// `GET /center/support-info` — the raw center JSON for the student's
+  /// own center (`data.center`, `data` or the bare body). Raw so the caller
+  /// can cache it as-is.
+  Future<Map<String, dynamic>> getSupportInfoJson() async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.centerSupportInfo,
+    );
+    return _unwrapCenter(response.data);
+  }
+
+  /// `GET /centers/{id}` as raw JSON (see [getSupportInfoJson]).
+  Future<Map<String, dynamic>> getCenterDetailsJson(int id) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      ApiEndpoints.centerDetails(id),
+    );
+    return _unwrapCenter(response.data);
+  }
+
+  static Map<String, dynamic> _unwrapCenter(Map<String, dynamic>? body) {
+    final data = body?['data'];
+    final map = data is Map<String, dynamic>
+        ? data
+        : (body ?? const <String, dynamic>{});
+    final center = map['center'];
+    if (center is Map<String, dynamic>) {
+      // Contact fields sometimes sit next to `center` rather than inside it.
+      return {...map, ...center};
+    }
+    return map;
+  }
+
   /// Joins (or, re-confirmed with a different grade, upserts) the center
   /// membership, by [code] — the backend resolves the center from its
   /// `code`, not from an id in the URL. [gradeId] is omitted for centers

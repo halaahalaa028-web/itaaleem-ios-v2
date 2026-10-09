@@ -24,9 +24,14 @@ CenterModel centerModelFromJson(Map<String, dynamic> json) {
         ? json['primary_color'] as String
         : '#0B3D91',
 
+    // `/center/support-info` may send single `phone`/`whatsapp` fields
+    // instead of the `phone_numbers` list.
     phoneNumbers: rawPhones is List
         ? rawPhones.map((e) => e.toString()).toList()
-        : const [],
+        : [
+            for (final key in const ['phone', 'whatsapp'])
+              ?_nonEmptyString(json[key]),
+          ].toSet().toList(),
 
     email: _nonEmptyString(json['email'] ?? json['contact_email']),
 

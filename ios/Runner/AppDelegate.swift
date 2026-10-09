@@ -14,6 +14,9 @@ import UserNotifications
   /// native view) while the screen is recorded / mirrored / AirPlayed.
   private var captureShieldWindow: UIWindow?
 
+  /// Makes protected screens render black in screenshots / recordings.
+  private let screenProtector = ScreenProtector()
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -67,12 +70,15 @@ import UserNotifications
     )
     screenSecurityChannel = channel
 
-    channel.setMethodCallHandler { call, result in
+    channel.setMethodCallHandler { [weak self] call, result in
       switch call.method {
       case "isCaptured":
         result(UIScreen.main.isCaptured)
-      case "enableSecure", "disableSecure":
-        // Nothing to toggle on iOS; detection runs for the whole session.
+      case "enableSecure", "protectOn":
+        self?.screenProtector.protectOn(window: self?.window)
+        result(nil)
+      case "disableSecure", "protectOff":
+        self?.screenProtector.protectOff()
         result(nil)
       default:
         result(FlutterMethodNotImplemented)
@@ -140,6 +146,63 @@ import UserNotifications
   private func hideCaptureShield() {
     captureShieldWindow?.isHidden = true
     captureShieldWindow = nil
+  }
+}
+
+/// Hides the app's content from screenshots, screen recordings and AirPlay
+/// with the secure-text-field trick (as in the `screen_protector` /
+/// `no_screenshot` plugins): the window's layer is re-parented into the
+/// secure container layer of a hidden `UITextField`. While
+/// `isSecureTextEntry` is true iOS draws that container as black in any
+/// capture, but normally on the device's own screen. Only layers move — the
+/// view hierarchy is untouched, so touches and gestures work as before.
+final class ScreenProtector {
+  private var field: UITextField?
+  private weak var attachedWindow: UIWindow?
+
+  func protectOn(window: UIWindow?) {
+    guard let window = window ?? Self.keyWindow() else { return }
+    attach(to: window)
+    field?.isSecureTextEntry = true
+  }
+
+  func protectOff() {
+    field?.isSecureTextEntry = false
+  }
+
+  private func attach(to window: UIWindow) {
+    if field != nil, attachedWindow === window { return }
+    guard let superlayer = window.layer.superlayer else { return }
+    let field = UITextField()
+    field.isSecureTextEntry = false
+    field.isUserInteractionEnabled = false
+    field.translatesAutoresizingMaskIntoConstraints = false
+    window.addSubview(field)
+    field.centerXAnchor.constraint(equalTo: window.centerXAnchor).isActive = true
+    field.centerYAnchor.constraint(equalTo: window.centerYAnchor).isActive = true
+    // The secure container is the first sublayer before iOS 17, the last on
+    // 17+.
+    superlayer.addSublayer(field.layer)
+    let container: CALayer?
+    if #available(iOS 17.0, *) {
+      container = field.layer.sublayers?.last
+    } else {
+      container = field.layer.sublayers?.first
+    }
+    guard let container = container else {
+      field.removeFromSuperview()
+      return
+    }
+    container.addSublayer(window.layer)
+    self.field = field
+    attachedWindow = window
+  }
+
+  private static func keyWindow() -> UIWindow? {
+    UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap { $0.windows }
+      .first { $0.isKeyWindow }
   }
 }
 
