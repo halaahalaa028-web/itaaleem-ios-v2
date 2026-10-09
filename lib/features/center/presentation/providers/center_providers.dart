@@ -235,6 +235,11 @@ class _CenterCache extends Notifier<Map<int, CenterModel>> {
   void put(CenterModel center) {
     state = {...state, center.id: center};
   }
+
+  void remove(int id) {
+    if (!state.containsKey(id)) return;
+    state = {...state}..remove(id);
+  }
 }
 
 final _centerCacheProvider =
@@ -272,6 +277,13 @@ final centerFetchErrorProvider = Provider.family<Object?, int>((ref, id) {
 /// read of [centerByIdProvider] fires the request again.
 void retryCenterFetch(WidgetRef ref, int id) {
   ref.read(_centerFetchErrorsProvider.notifier).clear(id);
+}
+
+/// Pull-to-refresh: drops the cached copy too, so [centerByIdProvider]
+/// fetches `GET /centers/{id}` again.
+void refreshCenter(WidgetRef ref, int id) {
+  ref.read(_centerFetchErrorsProvider.notifier).clear(id);
+  ref.read(_centerCacheProvider.notifier).remove(id);
 }
 
 /// Sticky gate [AppRouter] redirects on: `true` once either (a) a 403 from

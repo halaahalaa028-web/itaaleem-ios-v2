@@ -18,6 +18,8 @@ import 'package:itaaleem/features/subjects/presentation/providers/subjects_provi
 import 'package:itaaleem/features/subjects/presentation/widgets/subject_cover.dart';
 import 'package:itaaleem/features/subscriptions/presentation/widgets/subject_lock_gate.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
+import 'package:itaaleem/features/center/presentation/widgets/center_no_courses_state.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,12 +97,15 @@ class _RealSubjectsList extends ConsumerWidget {
       ),
       data: (subjects) {
         if (subjects.isEmpty) {
-          return const _FillScrollable(
-            child: AppEmptyState(
-              icon: Icons.menu_book_rounded,
-              title: 'مفيش مواد متاحة حالياً',
-              subtitle: 'المواد اللي هتشترك فيها هتظهر هنا',
-            ),
+          final noCourse =
+              ref.watch(centerMembershipProvider).valueOrNull?.gradeId == null;
+          return _FillScrollable(
+            child: noCourse
+                ? const CenterNoCoursesState()
+                : const AppEmptyState(
+                    icon: Icons.menu_book_rounded,
+                    title: 'لا توجد مواد في هذا الكورس حاليًا',
+                  ),
           );
         }
         final groups = _groupByTeacher(subjects);

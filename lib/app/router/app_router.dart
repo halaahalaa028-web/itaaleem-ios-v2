@@ -435,7 +435,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: contactCenterPath,
         pageBuilder: (context, state) => buildPageWithTransition(
           state: state,
-          child: const ContactCenterScreen(),
+          child: ContactCenterScreen(
+            preview: state.extra is CenterModel
+                ? state.extra! as CenterModel
+                : null,
+          ),
         ),
       ),
       GoRoute(

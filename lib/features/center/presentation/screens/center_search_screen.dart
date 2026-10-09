@@ -49,6 +49,10 @@ class CenterSearchBody extends ConsumerStatefulWidget {
 
 class _CenterSearchBodyState extends ConsumerState<CenterSearchBody> {
   final _codeController = TextEditingController();
+
+  /// Around the result/not-found/error card, scrolled into view after a
+  /// search so the keyboard never hides it.
+  final _resultKey = GlobalKey();
   bool _searching = false;
   CenterModel? _foundCenter;
   bool _notFound = false;
@@ -63,6 +67,7 @@ class _CenterSearchBodyState extends ConsumerState<CenterSearchBody> {
   Future<void> _searchByCode() async {
     final code = _codeController.text.trim().toUpperCase();
     if (code.isEmpty) return;
+    FocusScope.of(context).unfocus();
 
     setState(() {
       _searching = true;
@@ -82,6 +87,7 @@ class _CenterSearchBodyState extends ConsumerState<CenterSearchBody> {
         _searching = false;
         _foundCenter = centerDummyData.first;
       });
+      _revealResult();
       return;
     }
 
@@ -112,12 +118,32 @@ class _CenterSearchBodyState extends ConsumerState<CenterSearchBody> {
         _errorMessage = 'استغرق البحث وقتاً طويلاً، حاول مرة أخرى';
       });
     }
+    _revealResult();
+  }
+
+  /// Once the keyboard has closed and the card is laid out, scrolls it in.
+  void _revealResult() {
+    if (!mounted) return;
+    // The keyboard takes a moment to animate out and resize the viewport.
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      final target = _resultKey.currentContext;
+      if (target == null || !target.mounted) return;
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.xl),
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.all(
+        AppSpacing.xl,
+      ).add(EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom)),
       child: Column(
         children: [
           const SizedBox(height: AppSpacing.xl),
@@ -198,15 +224,19 @@ class _CenterSearchBodyState extends ConsumerState<CenterSearchBody> {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
-          if (_foundCenter != null)
-            Reveal(
-              key: ValueKey(_foundCenter!.id),
-              child: _CenterResultCard(center: _foundCenter!),
-            )
-          else if (_notFound)
-            const _CenterNotFoundCard()
-          else if (_errorMessage != null)
-            _CenterErrorCard(message: _errorMessage!),
+          KeyedSubtree(
+            key: _resultKey,
+            child: _foundCenter != null
+                ? Reveal(
+                    key: ValueKey(_foundCenter!.id),
+                    child: _CenterResultCard(center: _foundCenter!),
+                  )
+                : _notFound
+                ? const _CenterNotFoundCard()
+                : _errorMessage != null
+                ? _CenterErrorCard(message: _errorMessage!)
+                : const SizedBox.shrink(),
+          ),
         ],
       ),
     );

@@ -90,6 +90,7 @@ class _AdminDataTableState extends ConsumerState<AdminDataTable> {
           onNotification: _onScroll,
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: EdgeInsets.fromLTRB(
               AppSpacing.lg,
               AppSpacing.sm,

@@ -30,6 +30,7 @@ import 'package:itaaleem/features/subjects/presentation/widgets/subject_icon.dar
 import 'package:flutter/foundation.dart';
 import 'package:itaaleem/features/subscriptions/presentation/widgets/subject_lock_gate.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/features/center/presentation/widgets/center_no_courses_state.dart';
 import 'package:itaaleem/features/subjects/presentation/utils/protected_file_open.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/utils/youtube_utils.dart';
@@ -1106,10 +1107,15 @@ class _RealSubjectsSection extends ConsumerWidget {
         );
       },
       data: (subjects) => subjects.isEmpty
-          ? const EmptyState(
-              message: 'مفيش مواد متاحة حالياً',
-              verticalPadding: AppSpacing.md,
-            )
+          // Joined with no course (a new center with none yet) vs. a course
+          // that has no subjects yet.
+          ? ref.watch(centerMembershipProvider).valueOrNull?.gradeId == null
+                ? const CenterNoCoursesState()
+                : const EmptyState(
+                    icon: Icons.menu_book_rounded,
+                    message: 'لا توجد مواد في هذا الكورس حاليًا',
+                    verticalPadding: AppSpacing.md,
+                  )
           : Column(
               children: [
                 for (final (i, subject) in subjects.take(3).indexed)

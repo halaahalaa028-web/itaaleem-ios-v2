@@ -3,6 +3,7 @@ import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/core/widgets/app_button.dart';
 import 'package:itaaleem/core/widgets/app_toast.dart';
 import 'package:itaaleem/core/widgets/error_view.dart';
+import 'package:itaaleem/features/center/domain/entities/center_model.dart';
 import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
 import 'package:itaaleem/features/center/presentation/utils/center_color.dart';
 import 'package:itaaleem/features/center/presentation/utils/leave_center_dialog.dart';
@@ -23,7 +24,11 @@ import 'package:itaaleem/core/theme/app_spacing.dart';
 /// support, opens it the same way). Shows retry on failure, never an
 /// endless skeleton.
 class ContactCenterScreen extends ConsumerWidget {
-  const ContactCenterScreen({super.key});
+  const ContactCenterScreen({super.key, this.preview});
+
+  /// A center the student hasn't joined yet (opened from the join flow) —
+  /// shown as-is, since "my center" lookups 404 before joining.
+  final CenterModel? preview;
 
   Future<void> _open(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
@@ -42,7 +47,9 @@ class ContactCenterScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final info = ref.watch(contactCenterInfoProvider);
+    final info = preview != null
+        ? AsyncData<ContactCenterInfo>((center: preview!, fromCache: false))
+        : ref.watch(contactCenterInfoProvider);
     final data = info.valueOrNull;
 
     if (data == null) {
@@ -50,7 +57,8 @@ class ContactCenterScreen extends ConsumerWidget {
         return Scaffold(
           appBar: AppBar(title: const Text('تواصل مع السنتر')),
           body: ErrorView(
-            message: 'تعذر تحميل بيانات التواصل، تأكد من الاتصال وحاول مرة أخرى',
+            message:
+                'تعذر تحميل بيانات التواصل، تأكد من الاتصال وحاول مرة أخرى',
             retryLabel: 'إعادة المحاولة',
             onRetry: () => ref.invalidate(contactCenterInfoProvider),
           ),
@@ -139,12 +147,15 @@ class ContactCenterScreen extends ConsumerWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.lg),
-              AppButton.primary(
-                'مراسلة السنتر',
-                icon: Icons.chat_bubble_rounded,
-                onPressed: () => context.push(chatPath),
-              ),
-              const SizedBox(height: AppSpacing.lg),
+              // In-app chat needs membership.
+              if (preview == null) ...[
+                AppButton.primary(
+                  'مراسلة السنتر',
+                  icon: Icons.chat_bubble_rounded,
+                  onPressed: () => context.push(chatPath),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+              ],
               const Divider(),
               const SizedBox(height: AppSpacing.md),
               if (center.phoneNumbers.isNotEmpty) ...[
@@ -240,17 +251,18 @@ class ContactCenterScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.xl),
               ],
-              Center(
-                child: TextButton.icon(
-                  onPressed: () =>
-                      confirmLeaveCenter(context, ref, center.name),
-                  style: TextButton.styleFrom(
-                    foregroundColor: context.palette.error,
+              if (preview == null)
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () =>
+                        confirmLeaveCenter(context, ref, center.name),
+                    style: TextButton.styleFrom(
+                      foregroundColor: context.palette.error,
+                    ),
+                    icon: const Icon(Icons.logout_rounded),
+                    label: const Text('مغادرة السنتر'),
                   ),
-                  icon: const Icon(Icons.logout_rounded),
-                  label: const Text('مغادرة السنتر'),
                 ),
-              ),
             ],
           ),
         ),

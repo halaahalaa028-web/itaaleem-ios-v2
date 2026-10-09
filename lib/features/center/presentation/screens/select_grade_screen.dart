@@ -6,6 +6,8 @@ import 'package:itaaleem/core/widgets/app_toast.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
 import 'package:itaaleem/features/center/domain/entities/center_model.dart';
 import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
+import 'package:itaaleem/features/center/presentation/screens/center_profile_screen.dart';
+import 'package:itaaleem/features/center/presentation/widgets/center_no_courses_state.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -215,6 +217,39 @@ class _SelectGradeScreenState extends ConsumerState<SelectGradeScreen> {
 
     final grades = [...center.grades]
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+
+    if (grades.isEmpty) {
+      final alreadyMember =
+          ref.watch(centerMembershipProvider).valueOrNull?.centerId ==
+          widget.centerId;
+      return Scaffold(
+        appBar: AppBar(title: const Text('اختار الكورس')),
+        body: AppBackground(
+          child: RefreshIndicator(
+            onRefresh: () async => refreshCenter(ref, widget.centerId),
+            child: LayoutBuilder(
+              builder: (context, c) => SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: c.maxHeight),
+                  child: Center(
+                    child: CenterNoCoursesState(
+                      center: alreadyMember ? null : center,
+                      showBack: true,
+                      // The API accepts a join with no grade — let the
+                      // student in now; home shows the same notice.
+                      extraAction: alreadyMember
+                          ? null
+                          : JoinCenterButton(center: center),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('اختار الكورس')),

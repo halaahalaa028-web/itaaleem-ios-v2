@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/widgets/app_empty_state.dart';
 import 'package:itaaleem/features/subjects/presentation/utils/protected_file_open.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -549,24 +550,9 @@ class _NoContentNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxxl),
-      child: Column(
-        children: [
-          Icon(Icons.video_library_outlined, size: 48, color: scheme.outline),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'مفيش محاضرات متاحة بعد',
-            style: TextStyle(
-              fontFamily: 'Cairo',
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: scheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
+    return const AppEmptyState(
+      icon: Icons.video_library_outlined,
+      title: 'لا توجد محاضرات بعد',
     );
   }
 }

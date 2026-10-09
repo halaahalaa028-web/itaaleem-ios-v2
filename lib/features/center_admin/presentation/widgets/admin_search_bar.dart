@@ -45,6 +45,13 @@ class _AdminSearchBarState extends State<AdminSearchBar> {
       controller: _controller,
       onChanged: _changed,
       textInputAction: TextInputAction.search,
+      // Keyboard "search": run now (skip the debounce) and close the
+      // keyboard so the results below are visible.
+      onSubmitted: (value) {
+        _debounce?.cancel();
+        widget.onChanged(value.trim());
+        FocusScope.of(context).unfocus();
+      },
       decoration: InputDecoration(
         hintText: widget.hint,
         prefixIcon: const Icon(Icons.search_rounded),
