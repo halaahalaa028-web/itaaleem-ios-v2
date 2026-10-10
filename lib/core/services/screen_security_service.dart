@@ -45,6 +45,50 @@ class ScreenSecurityService {
   /// Last known "screen is being recorded/mirrored" state (iOS).
   static bool get isCaptured => _isCaptured;
 
+  static bool? _shieldFromProfile;
+  static bool? _shieldFromSettings;
+  static bool _shieldSent = false;
+
+  /// Server flag `ios_screenshot_shield` gating the iOS secure-layer
+  /// protection. The user's `GET /profile` value wins over
+  /// `/public/settings`; off when neither said true (or the calls failed).
+  static bool get iosShieldEnabled =>
+      _shieldFromProfile ?? _shieldFromSettings ?? false;
+
+  /// Feeds the flag from a raw `/profile` or `/public/settings` body.
+  static void updateShieldFlag(Object? body, {required bool fromProfile}) {
+    final value = _findShieldFlag(body);
+    if (fromProfile) {
+      _shieldFromProfile = value;
+    } else {
+      _shieldFromSettings = value;
+    }
+    _pushShieldFlag();
+  }
+
+  static void _pushShieldFlag() {
+    final enabled = iosShieldEnabled;
+    if (_shieldSent == enabled) return;
+    _shieldSent = enabled;
+    unawaited(() async {
+      await _invoke('setShieldEnabled', enabled);
+      if (enabled && _secureCount > 0) await _invoke('enableSecure');
+    }());
+  }
+
+  static bool? _findShieldFlag(Object? body, [int depth = 0]) {
+    if (body is! Map || depth > 2) return null;
+    final raw = body['ios_screenshot_shield'];
+    if (raw is bool) return raw;
+    if (raw is num) return raw != 0;
+    if (raw is String) return raw == 'true' || raw == '1';
+    for (final key in const ['data', 'student', 'user', 'settings']) {
+      final found = _findShieldFlag(body[key], depth + 1);
+      if (found != null) return found;
+    }
+    return null;
+  }
+
   static Future<void> enable() async {
     _ensureListening();
     _secureCount++;
@@ -107,9 +151,9 @@ class ScreenSecurityService {
     if (kDebugMode) debugPrint('[ScreenSecurityService] event: ${event.name}');
   }
 
-  static Future<void> _invoke(String method) async {
+  static Future<void> _invoke(String method, [Object? arguments]) async {
     try {
-      await _channel.invokeMethod<void>(method);
+      await _channel.invokeMethod<void>(method, arguments);
       if (kDebugMode) {
         debugPrint('[ScreenSecurityService] $method: ok');
       }
