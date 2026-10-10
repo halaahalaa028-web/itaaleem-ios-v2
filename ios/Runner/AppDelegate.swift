@@ -75,7 +75,10 @@ import UserNotifications
       case "isCaptured":
         result(UIScreen.main.isCaptured)
       case "enableSecure", "protectOn":
-        self?.screenProtector.protectOn(window: self?.window)
+        self?.screenProtector.protectOn(controller: self?.flutterViewController())
+        result(nil)
+      case "setShieldEnabled":
+        self?.screenProtector.isEnabled = (call.arguments as? Bool) ?? false
         result(nil)
       case "disableSecure", "protectOff":
         self?.screenProtector.protectOff()
@@ -83,6 +86,14 @@ import UserNotifications
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+
+    NotificationCenter.default.addObserver(
+      forName: UIApplication.willTerminateNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      self?.screenProtector.protectOff()
     }
 
     NotificationCenter.default.addObserver(
@@ -113,6 +124,15 @@ import UserNotifications
     ) { [weak self] _ in
       self?.screenSecurityChannel?.invokeMethod("onScreenshot", arguments: nil)
     }
+  }
+
+  private func flutterViewController() -> FlutterViewController? {
+    if let vc = window?.rootViewController as? FlutterViewController { return vc }
+    return UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .flatMap { $0.windows }
+      .compactMap { $0.rootViewController as? FlutterViewController }
+      .first
   }
 
   private func captureStateChanged() {
@@ -149,60 +169,129 @@ import UserNotifications
   }
 }
 
-/// Hides the app's content from screenshots, screen recordings and AirPlay
-/// with the secure-text-field trick (as in the `screen_protector` /
-/// `no_screenshot` plugins): the window's layer is re-parented into the
-/// secure container layer of a hidden `UITextField`. While
-/// `isSecureTextEntry` is true iOS draws that container as black in any
-/// capture, but normally on the device's own screen. Only layers move — the
-/// view hierarchy is untouched, so touches and gestures work as before.
+/// Hides the Flutter UI from screenshots, screen recordings and AirPlay with
+/// the secure-text-field canvas: the private canvas view that a
+/// `UITextField(isSecureTextEntry: true)` draws into is rendered black in any
+/// capture but normally on the device's own screen.
+///
+/// The canvas is taken out of its text field and used as a standalone
+/// container that becomes the FlutterViewController's root view, with the
+/// FlutterView inside it. Nothing that contains the container (window,
+/// window layer, transition views) is ever moved into it, so the hierarchy
+/// can't form a cycle (the build 41 crash). Off by default; only runs while
+/// the server flag `ios_screenshot_shield` is true. Any failed step leaves
+/// the hierarchy untouched (detection-only behaviour, as in build 39).
 final class ScreenProtector {
+  /// Mirrors `ios_screenshot_shield`; false until Dart says otherwise.
+  var isEnabled = false {
+    didSet { if !isEnabled { protectOff() } }
+  }
+
   private var field: UITextField?
-  private weak var attachedWindow: UIWindow?
+  private var container: UIView?
+  private weak var controller: UIViewController?
+  private weak var flutterView: UIView?
+  private var savedFrame: CGRect = .zero
+  private var savedMask: UIView.AutoresizingMask = []
 
-  func protectOn(window: UIWindow?) {
-    guard let window = window ?? Self.keyWindow() else { return }
-    attach(to: window)
-    field?.isSecureTextEntry = true
-  }
+  var isActive: Bool { container != nil }
 
-  func protectOff() {
-    field?.isSecureTextEntry = false
-  }
-
-  private func attach(to window: UIWindow) {
-    if field != nil, attachedWindow === window { return }
-    guard let superlayer = window.layer.superlayer else { return }
-    let field = UITextField()
-    field.isSecureTextEntry = false
-    field.isUserInteractionEnabled = false
-    field.translatesAutoresizingMaskIntoConstraints = false
-    window.addSubview(field)
-    field.centerXAnchor.constraint(equalTo: window.centerXAnchor).isActive = true
-    field.centerYAnchor.constraint(equalTo: window.centerYAnchor).isActive = true
-    // The secure container is the first sublayer before iOS 17, the last on
-    // 17+.
-    superlayer.addSublayer(field.layer)
-    let container: CALayer?
-    if #available(iOS 17.0, *) {
-      container = field.layer.sublayers?.last
-    } else {
-      container = field.layer.sublayers?.first
-    }
-    guard let container = container else {
-      field.removeFromSuperview()
+  func protectOn(controller: UIViewController?) {
+    guard isEnabled, !isActive else { return }
+    guard let controller = controller,
+          let flutterView = controller.viewIfLoaded,
+          let host = flutterView.superview else {
+      NSLog("[ScreenProtector] no FlutterViewController view in a window — skipped")
       return
     }
-    container.addSublayer(window.layer)
+
+    let field = UITextField()
+    field.isSecureTextEntry = true
+    field.isUserInteractionEnabled = false
+    field.frame = CGRect(x: 0, y: 0, width: 1, height: 1)
+    field.layoutIfNeeded()
+    guard let canvas = Self.findCanvas(in: field) else {
+      NSLog("[ScreenProtector] secure canvas view not found on iOS \(UIDevice.current.systemVersion) — protection off")
+      return
+    }
+
+    canvas.removeFromSuperview()
+    canvas.subviews.forEach { $0.removeFromSuperview() }
+    canvas.transform = .identity
+    canvas.layer.transform = CATransform3DIdentity
+    canvas.isUserInteractionEnabled = true
+    canvas.backgroundColor = .clear
+    canvas.clipsToBounds = false
+    canvas.frame = flutterView.frame
+    canvas.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+    savedFrame = flutterView.frame
+    savedMask = flutterView.autoresizingMask
+    let index = host.subviews.firstIndex(of: flutterView) ?? host.subviews.count
+
+    host.insertSubview(canvas, at: index)
+    canvas.addSubview(flutterView)
+    flutterView.transform = .identity
+    flutterView.frame = canvas.bounds
+    flutterView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    controller.view = canvas
+
     self.field = field
-    attachedWindow = window
+    self.container = canvas
+    self.controller = controller
+    self.flutterView = flutterView
+
+    guard Self.isAcyclic(canvas), flutterView.superview === canvas else {
+      assertionFailure("[ScreenProtector] view hierarchy cycle")
+      NSLog("[ScreenProtector] hierarchy check failed — rolling back")
+      protectOff()
+      return
+    }
+    canvas.setNeedsLayout()
   }
 
-  private static func keyWindow() -> UIWindow? {
-    UIApplication.shared.connectedScenes
-      .compactMap { $0 as? UIWindowScene }
-      .flatMap { $0.windows }
-      .first { $0.isKeyWindow }
+  /// Puts the FlutterView back exactly where it was. Safe to call any time.
+  func protectOff() {
+    guard let container = container else { return }
+    if let flutterView = flutterView {
+      if let host = container.superview {
+        let index = host.subviews.firstIndex(of: container) ?? host.subviews.count
+        host.insertSubview(flutterView, at: index)
+      } else {
+        flutterView.removeFromSuperview()
+      }
+      flutterView.autoresizingMask = savedMask
+      flutterView.frame = container.superview != nil ? container.frame : savedFrame
+      controller?.view = flutterView
+      flutterView.setNeedsLayout()
+    }
+    container.removeFromSuperview()
+    self.container = nil
+    self.field = nil
+    self.controller = nil
+    self.flutterView = nil
+  }
+
+  /// The private canvas class: `_UITextLayoutCanvasView` (iOS 15+) or
+  /// `_UITextFieldCanvasView` (older). Matched by name, never by index.
+  private static func findCanvas(in root: UIView, depth: Int = 0) -> UIView? {
+    for sub in root.subviews {
+      let name = NSStringFromClass(type(of: sub))
+      if name.contains("CanvasView") || name.contains("LayoutCanvas") { return sub }
+      if depth < 3, let found = findCanvas(in: sub, depth: depth + 1) { return found }
+    }
+    return nil
+  }
+
+  /// No view may be its own ancestor.
+  private static func isAcyclic(_ view: UIView) -> Bool {
+    var seen = Set<ObjectIdentifier>()
+    var current: UIView? = view
+    while let v = current {
+      if !seen.insert(ObjectIdentifier(v)).inserted { return false }
+      current = v.superview
+    }
+    return true
   }
 }
 

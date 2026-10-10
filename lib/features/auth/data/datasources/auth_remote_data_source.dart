@@ -1,6 +1,7 @@
 import 'package:itaaleem/core/device/device_identity_service.dart';
 import 'package:itaaleem/core/network/api_endpoints.dart';
 import 'package:itaaleem/core/network/dio_client.dart';
+import 'package:itaaleem/core/services/screen_security_service.dart';
 import 'package:itaaleem/features/auth/data/models/student_model.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -96,6 +97,7 @@ class AuthRemoteDataSource {
         '>>> GET ${ApiEndpoints.profile} raw response: ${response.data}',
       );
     }
+    ScreenSecurityService.updateShieldFlag(response.data, fromProfile: true);
     final student = StudentModel.fromEnvelope(response.data ?? const {});
     if (kDebugMode) {
       debugPrint('>>> FIXED: centerCover=${student.centerCover}');
