@@ -19,7 +19,12 @@ class StudentAvatar extends StatelessWidget {
     this.onCameraTap,
     this.isLoading = false,
     this.showCameraBadge = false,
+    this.initial,
   });
+
+  /// Shown in the placeholder circle instead of the person icon (the
+  /// profile header passes the name's first letter).
+  final String? initial;
 
   final double radius;
   final String? avatarUrl;
@@ -106,29 +111,42 @@ class StudentAvatar extends StatelessWidget {
         fit: BoxFit.cover,
         memCacheWidth: cachePx,
         memCacheHeight: cachePx,
-        placeholder: (context, url) => _GradientPersonIcon(size: radius),
-        errorWidget: (context, url, error) => _GradientPersonIcon(size: radius),
+        placeholder: (context, url) =>
+            _GradientPersonIcon(size: radius, initial: initial),
+        errorWidget: (context, url, error) =>
+            _GradientPersonIcon(size: radius, initial: initial),
       );
     }
-    return _GradientPersonIcon(size: radius);
+    return _GradientPersonIcon(size: radius, initial: initial);
   }
 }
 
 class _GradientPersonIcon extends StatelessWidget {
-  const _GradientPersonIcon({required this.size});
+  const _GradientPersonIcon({required this.size, this.initial});
 
   final double size;
+  final String? initial;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(gradient: context.palette.brandGradient),
       child: Center(
-        child: Icon(
-          Icons.person_rounded,
-          color: context.palette.onPrimary,
-          size: size * 0.75,
-        ),
+        child: initial != null && initial!.isNotEmpty
+            ? Text(
+                initial!,
+                style: TextStyle(
+                  fontFamily: 'Cairo',
+                  fontSize: size * 0.8,
+                  fontWeight: FontWeight.w800,
+                  color: context.palette.onPrimary,
+                ),
+              )
+            : Icon(
+                Icons.person_rounded,
+                color: context.palette.onPrimary,
+                size: size * 0.75,
+              ),
       ),
     );
   }

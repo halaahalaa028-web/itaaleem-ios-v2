@@ -1,3 +1,4 @@
+import 'package:itaaleem/core/content/content_policy.dart';
 import 'package:itaaleem/core/widgets/app_toast.dart';
 import 'package:itaaleem/features/video/data/offline/offline_database.dart';
 import 'package:itaaleem/features/video/data/offline/offline_download_manager.dart';
@@ -72,6 +73,10 @@ class LectureDownloadButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // The center turned offline video download off (`can_download_video`).
+    if (!ref.watch(contentPolicyProvider.select((p) => p.canDownloadVideo))) {
+      return const SizedBox.shrink();
+    }
     final rowAsync = ref.watch(offlineVideoByLessonProvider(lectureId));
     final row = rowAsync.valueOrNull;
     final manager = ref.read(offlineDownloadManagerProvider);

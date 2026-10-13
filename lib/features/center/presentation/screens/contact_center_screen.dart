@@ -7,7 +7,7 @@ import 'package:itaaleem/features/center/domain/entities/center_model.dart';
 import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
 import 'package:itaaleem/features/center/presentation/utils/center_color.dart';
 import 'package:itaaleem/features/center/presentation/utils/leave_center_dialog.dart';
-import 'package:itaaleem/features/center/presentation/widgets/social_icon_button.dart';
+import 'package:itaaleem/features/center/presentation/widgets/social_links_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
@@ -208,22 +208,8 @@ class ContactCenterScreen extends ConsumerWidget {
                   ),
                 const SizedBox(height: AppSpacing.base),
               ],
-              if (center.socialLinks.isNotEmpty) ...[
-                const _SectionTitle(title: 'تابعنا'),
-                const SizedBox(height: AppSpacing.md),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 12,
-                  children: [
-                    for (final entry in center.socialLinks.entries)
-                      if (entry.value != null)
-                        SocialIconButton(
-                          platform: entry.key,
-                          onTap: () => _open(context, entry.value!),
-                          size: 48,
-                        ),
-                  ],
-                ),
+              if (hasUsableSocialLinks(center.socialLinks)) ...[
+                SocialLinksBar(socialLinks: center.socialLinks),
                 const SizedBox(height: AppSpacing.base),
               ],
               if (center.address != null) ...[

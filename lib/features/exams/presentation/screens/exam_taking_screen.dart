@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'dart:async';
 
 import 'package:itaaleem/core/services/exam_history_service.dart';
@@ -199,6 +200,7 @@ class _ExamTakingScreenState extends ConsumerState<ExamTakingScreen> {
 
   Future<void> _submit() async {
     if (_submitting) return;
+    HapticFeedback.mediumImpact();
     setState(() => _submitting = true);
 
     final examId = widget.examId;

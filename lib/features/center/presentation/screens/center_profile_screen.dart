@@ -296,7 +296,10 @@ class CenterProfileScreen extends ConsumerWidget {
                             if (center.socialLinks.isNotEmpty) ...[
                               const SizedBox(height: AppSpacing.sm),
                               reveal(
-                                SocialLinksBar(socialLinks: center.socialLinks),
+                                SocialLinksBar(
+                                  socialLinks: center.socialLinks,
+                                  title: null,
+                                ),
                               ),
                             ],
                           ],

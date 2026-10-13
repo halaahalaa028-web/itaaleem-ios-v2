@@ -20,7 +20,18 @@ class SettingsRemoteDataSource {
     final body = data is Map<String, dynamic>
         ? data
         : (response.data ?? const <String, dynamic>{});
-    return AppSettingsModel.fromJson(body);
+    // `rate_app` sits beside `settings` (not inside it) — look at every
+    // level it could be on.
+    final root = response.data ?? const <String, dynamic>{};
+    final rateApp = [
+      root['rate_app'],
+      body['rate_app'],
+      if (body['settings'] is Map) (body['settings'] as Map)['rate_app'],
+    ].firstWhere((e) => e is Map, orElse: () => null);
+    final settings = body['settings'] is Map<String, dynamic>
+        ? {...body, ...body['settings'] as Map<String, dynamic>}
+        : body;
+    return AppSettingsModel.fromJson(settings, rateApp: rateApp);
   }
 }
 

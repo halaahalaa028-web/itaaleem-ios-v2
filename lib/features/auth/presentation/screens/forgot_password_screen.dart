@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:itaaleem/core/device/device_identity_service.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/network/api_endpoints.dart';
 import 'package:itaaleem/core/network/dio_client.dart';
@@ -28,6 +29,9 @@ class ForgotPasswordScreen extends ConsumerStatefulWidget {
 
 class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   static const _unsupportedStatuses = {404, 405, 501};
+
+  static const _receivedMessage =
+      'تم استلام طلبك. لو الرقم مسجل، هيتواصل معاك السنتر على رقمك قريباً.';
 
   final _identifier = TextEditingController();
   bool _busy = false;
@@ -71,24 +75,34 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       _showContact = false;
     });
     try {
+      final device = await ref
+          .read(deviceIdentityServiceProvider)
+          .getIdentity();
       await ref
           .read(dioClientProvider)
           .post<dynamic>(
             ApiEndpoints.forgotPassword,
-            data: isEmail ? {'email': value} : {'mobile': value},
+            data: {
+              if (isEmail) 'email': value else 'mobile': value,
+              'device_id': device.deviceId,
+              'device_model': device.deviceModel,
+            },
           );
       if (!mounted) return;
-      setState(
-        () =>
-            _success = 'تم إرسال طلب استعادة كلمة المرور. سنتواصل معك قريباً.',
-      );
+      setState(() => _success = _receivedMessage);
     } on DioException catch (e) {
       if (!mounted) return;
       final status = e.response?.statusCode;
       if (_unsupportedStatuses.contains(status)) {
+        // The route itself is missing (older server) — contact the center.
         setState(() => _showContact = true);
-      } else {
+      } else if (status == 429 || e.response == null) {
+        // Rate limit / no network: the request wasn't taken.
         setState(() => _error = failureOf(e).message);
+      } else {
+        // Any other answer (e.g. an unknown number) reads the same, so the
+        // screen never reveals whether a number is registered.
+        setState(() => _success = _receivedMessage);
       }
     } catch (_) {
       if (!mounted) return;

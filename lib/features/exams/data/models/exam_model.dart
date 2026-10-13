@@ -259,7 +259,7 @@ class ExamSummaryModel extends ExamSummary {
             json['pass_percentage'] ?? json['pass_score'],
           ) ??
           60,
-      isLocked: json['is_locked'] == true,
+      isLocked: json['is_locked'] == true || json['has_access'] == false,
     );
   }
 

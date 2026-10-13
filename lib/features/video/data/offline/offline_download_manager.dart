@@ -221,6 +221,31 @@ class OfflineDownloadManager {
     await _db.deleteByLessonId(lessonId);
   }
 
+  /// Logout: cancels every download, deletes every encrypted file and row,
+  /// and the AES key itself — nothing of the previous account survives.
+  Future<void> deleteAllForLogout() async {
+    for (final token in _activeCancelTokens.values) {
+      token.cancel('logout');
+    }
+    _activeCancelTokens.clear();
+    _pausing.clear();
+    try {
+      final dir = await _offlineDir();
+      if (await dir.exists()) await dir.delete(recursive: true);
+    } catch (_) {}
+    for (final row in await _db.getAll()) {
+      final path = row.localPath;
+      if (path.isNotEmpty) {
+        try {
+          final file = File(path);
+          if (await file.exists()) await file.delete();
+        } catch (_) {}
+      }
+      await _db.deleteByLessonId(row.lessonId);
+    }
+    await _encryption.deleteKey();
+  }
+
   Future<void> retryDownload(int lessonId) async {
     if (_isDemo()) throw const DemoModeDownloadException();
     final row = await _db.getByLessonId(lessonId);

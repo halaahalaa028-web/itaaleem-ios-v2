@@ -33,10 +33,45 @@ class CenterSubscriptionsScreen extends ConsumerWidget {
       title: 'اختر المادة',
     );
     if (subject == null || !context.mounted) return;
+    // Optional: scope to one course (`grade_id`). Missing route → no picker.
+    List<AdminRecord> courses;
+    try {
+      courses = await ref.read(centerCoursesProvider.future);
+    } catch (_) {
+      courses = const [];
+    }
+    if (!context.mounted) return;
     final values = await showAdminForm(
       context,
       title: 'تفعيل اشتراك: ${student.title} — ${subject.title}',
       submitLabel: 'تفعيل',
+      extra: courses.isEmpty
+          ? null
+          : (values, setState) {
+              values['_only_course'] ??= true;
+              return [
+                DropdownButtonFormField<int>(
+                  initialValue: values['_grade_id'] as int?,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'الكورس',
+                    prefixIcon: Icon(Icons.school_rounded),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final c in courses)
+                      DropdownMenuItem(value: c.id, child: Text(c.title)),
+                  ],
+                  onChanged: (v) => setState(() => values['_grade_id'] = v),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('يفتح مواد هذا الكورس فقط'),
+                  value: values['_only_course'] == true,
+                  onChanged: (v) => setState(() => values['_only_course'] = v),
+                ),
+              ];
+            },
       fields: const [
         AdminField(
           'duration_days',
@@ -49,12 +84,15 @@ class CenterSubscriptionsScreen extends ConsumerWidget {
       ],
     );
     if (values == null || !context.mounted) return;
+    final gradeId = values.remove('_grade_id');
+    final onlyCourse = values.remove('_only_course') == true;
     await runAdminAction(
       context,
       ref,
       () => ref.read(centerAdminRepositoryProvider).create('subscriptions', {
         'student_id': student.id,
         'subject_id': subject.id,
+        if (gradeId != null && onlyCourse) 'grade_id': gradeId,
         ...values,
       }),
       success: 'تم تفعيل الاشتراك',

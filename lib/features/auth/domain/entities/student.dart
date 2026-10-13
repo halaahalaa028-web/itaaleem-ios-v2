@@ -17,9 +17,14 @@ class Student {
     this.subscriptionStatus,
     this.hasPaidAccess = false,
     this.role,
+    this.mustChangePassword = false,
   });
 
   final int id;
+
+  /// `must_change_password` — the center set a temporary password; the app
+  /// blocks everything behind "تغيير كلمة السر" until it's changed.
+  final bool mustChangePassword;
 
   /// The user's `role` from `GET /profile` / `/login` (`"student"` for
   /// every regular account). `null` when the response didn't carry one —

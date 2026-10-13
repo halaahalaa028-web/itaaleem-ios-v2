@@ -379,6 +379,105 @@ class CenterAdminRepository {
     return one.isEmpty ? const [] : [AdminRecord(one)];
   });
 
+  /// `POST activation-codes` with a scope — a whole course
+  /// (`scope_type: course` + `grade_id`) or one subject (`scope_type:
+  /// subject` + `subject_id`). `count` 1–1000. Resolves to the batch the
+  /// server created and its codes.
+  Future<GeneratedCodesBatch> generateActivationCodes({
+    required String scopeType,
+    required int gradeId,
+    int? subjectId,
+    required int count,
+    String? batchName,
+    DateTime? expiresAt,
+    int? durationDays,
+  }) => _guard(() async {
+    String two(int n) => n.toString().padLeft(2, '0');
+    final body = await _api.post('activation-codes', {
+      'scope_type': scopeType,
+      'grade_id': gradeId,
+      'subject_id': ?subjectId,
+      'count': count,
+      if (batchName != null && batchName.trim().isNotEmpty)
+        'batch_name': batchName.trim(),
+      if (expiresAt != null)
+        'expires_at':
+            '${expiresAt.year}-${two(expiresAt.month)}-${two(expiresAt.day)}',
+      'duration_days': ?durationDays,
+    });
+    final root = body is Map ? body : const {};
+    final data = root['data'];
+    final raw = data is List
+        ? data
+        : (data is Map ? (data['codes'] ?? data['data']) : root['codes']);
+    final meta = data is Map ? data : root;
+    return GeneratedCodesBatch(
+      batchId: (root['batch_id'] ?? meta['batch_id'])?.toString(),
+      batchName: (root['batch_name'] ?? meta['batch_name'])?.toString(),
+      codes: [
+        if (raw is List)
+          for (final e in raw)
+            if (e is Map)
+              AdminRecord(Map<String, dynamic>.from(e))
+            else if (e is String)
+              AdminRecord({'code': e}),
+      ],
+    );
+  });
+
+  /// `GET courses` — the center's courses (grades) for pickers.
+  Future<List<AdminRecord>> courses() => _guard(() async {
+    return [
+      for (final e in extractAdminList(
+        await _api.get('courses', query: {'per_page': 100}),
+      ))
+        if (e is Map) AdminRecord(Map<String, dynamic>.from(e)),
+    ];
+  });
+
+  /// `GET courses/{id}/subjects`.
+  Future<List<AdminRecord>> courseSubjects(int courseId) => _guard(() async {
+    return [
+      for (final e in extractAdminList(
+        await _api.get('courses/$courseId/subjects', query: {'per_page': 200}),
+      ))
+        if (e is Map) AdminRecord(Map<String, dynamic>.from(e)),
+    ];
+  });
+
+  // --- Inbox (the admin's own notifications) ------------------------------
+
+  /// `GET inbox/unread-count` → `{unread_count}`.
+  Future<int> inboxUnreadCount() => _guard(() async {
+    final body = await _api.get('inbox/unread-count');
+    final map = body is Map ? body : const {};
+    final data = map['data'] is Map ? map['data'] as Map : map;
+    final raw = data['unread_count'] ?? map['unread_count'];
+    return raw is num ? raw.toInt() : int.tryParse('${raw ?? ''}') ?? 0;
+  });
+
+  /// `POST inbox/{id}/read`.
+  Future<void> markInboxRead(String id) =>
+      _guard(() => _api.post('inbox/$id/read'));
+
+  /// `POST inbox/read-all` — resolves to the number marked.
+  Future<int> markAllInboxRead() => _guard(() async {
+    final body = await _api.post('inbox/read-all');
+    final n = body is Map ? body['updated'] : null;
+    return n is num ? n.toInt() : 0;
+  });
+
+  // --- Settings -------------------------------------------------------------
+
+  /// `GET settings` as raw JSON (nested objects kept).
+  Future<Map<String, dynamic>> settings() => _guard(() async {
+    return extractAdminObject(await _api.get('settings'));
+  });
+
+  /// `PUT settings` with only the changed section (partial update).
+  Future<String?> updateSettings(Map<String, dynamic> patch) =>
+      _guard(() async => _serverMessage(await _api.put('settings', patch)));
+
   static int? _totalOf(Object? body) {
     int? i(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
     if (body is! Map) return null;
@@ -423,19 +522,25 @@ class CenterAdminRepository {
         );
       case 422:
         return ValidationFailure(serverMessage ?? 'البيانات المدخلة غير صحيحة');
+      case 429:
+        return const ServerFailure(
+          'محاولات كثيرة، انتظر قليلاً',
+          statusCode: 429,
+        );
     }
     if (status != null && status >= 500) {
-      return ServerFailure(
-        'حصلت مشكلة في السيرفر، جرّب تاني بعد شوية',
-        statusCode: status,
-      );
+      return ServerFailure('حدث خطأ غير متوقع', statusCode: status);
     }
     final mapped = failureOf(e);
     if (mapped is! UnknownFailure) return mapped;
     if (e.type == DioExceptionType.connectionError ||
         e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout) {
-      return const NetworkFailure('تأكد من الاتصال بالإنترنت');
+      return NetworkFailure(
+        e.type == DioExceptionType.connectionError
+            ? 'لا يوجد اتصال بالإنترنت'
+            : 'الاتصال بطيء، حاول مرة أخرى',
+      );
     }
     return ServerFailure(serverMessage ?? 'حدث خطأ، حاول مرة أخرى');
   }

@@ -1,3 +1,5 @@
+import 'package:itaaleem/core/device/device_identity_service.dart'
+    show appVersionString;
 import 'package:itaaleem/core/error/error_messages.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/network/api_endpoints.dart';
@@ -6,6 +8,7 @@ import 'package:itaaleem/core/network/center_deactivated_events.dart';
 import 'package:itaaleem/core/network/device_lock_events.dart';
 import 'package:itaaleem/core/storage/secure_storage_service.dart';
 import 'package:dio/dio.dart';
+import 'package:itaaleem/core/utils/platform_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -55,6 +58,22 @@ final skipAuthOptions = Options(extra: const {'skipAuth': true});
 /// (header) seconds — capped, 2s when absent — and retries the request
 /// once. A second 429 falls through to [ErrorMappingInterceptor], which
 /// shows the server's own message.
+/// `X-App-Version: {version}+{build}` and `X-Platform: android|ios` on
+/// every request.
+class AppVersionInterceptor extends Interceptor {
+  @override
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    final version = await appVersionString();
+    if (version.isNotEmpty) options.headers['X-App-Version'] = version;
+    // Without it the server treats the device as iOS (no purchase UI).
+    options.headers['X-Platform'] = platformHeaderValue;
+    handler.next(options);
+  }
+}
+
 class RateLimitRetryInterceptor extends Interceptor {
   RateLimitRetryInterceptor(this._dio);
 
@@ -155,10 +174,9 @@ class ErrorMappingInterceptor extends Interceptor {
       case DioExceptionType.sendTimeout:
       case DioExceptionType.receiveTimeout:
       case DioExceptionType.transformTimeout:
+        return const NetworkFailure('الاتصال بطيء، حاول مرة أخرى');
       case DioExceptionType.connectionError:
-        return const NetworkFailure(
-          'تعذر الاتصال، تحقق من الإنترنت وحاول مرة أخرى',
-        );
+        return const NetworkFailure('لا يوجد اتصال بالإنترنت');
       case DioExceptionType.cancel:
         return const UnknownFailure('تم إلغاء الطلب');
       case DioExceptionType.badCertificate:
@@ -166,9 +184,7 @@ class ErrorMappingInterceptor extends Interceptor {
       case DioExceptionType.badResponse:
         return _mapStatusCode(err);
       case DioExceptionType.unknown:
-        return const NetworkFailure(
-          'تعذر الاتصال، تحقق من الإنترنت وحاول مرة أخرى',
-        );
+        return const NetworkFailure('لا يوجد اتصال بالإنترنت');
     }
   }
 
@@ -211,8 +227,23 @@ class ErrorMappingInterceptor extends Interceptor {
 
     switch (statusCode) {
       case 401:
-        return UnauthorizedFailure(extractMessage());
+        // Login/register: the server's "wrong credentials" text; anywhere
+        // else the session itself ended (and the app logs out).
+        return UnauthorizedFailure(
+          _localOnlyUnauthorizedPaths.contains(err.requestOptions.path)
+              ? extractMessage()
+              : 'انتهت الجلسة، سجّل الدخول مرة أخرى',
+        );
       case 403:
+        // `{locked: true}` — content for subscribers only, never an error
+        // screen and never "center deactivated".
+        if (data is Map && data['locked'] == true) {
+          return const ServerFailure(
+            lockedForSubscribersMessage,
+            statusCode: 403,
+            code: 'locked',
+          );
+        }
         final message = data is Map && data['message'] is String
             ? data['message'] as String
             : 'ليس لديك صلاحية للوصول لهذا المحتوى';
@@ -266,18 +297,20 @@ class ErrorMappingInterceptor extends Interceptor {
           statusCode: 404,
         );
       case 429:
-        return ServerFailure(
-          data is Map && data['message'] is String
-              ? data['message'] as String
-              : 'طلبات كثيرة، حاول بعد لحظات',
+        return const ServerFailure(
+          'محاولات كثيرة، انتظر قليلاً',
           statusCode: 429,
         );
       default:
         if (statusCode != null && statusCode >= 500) {
-          return ServerFailure(
-            'حصلت مشكلة في السيرفر، حاول مرة أخرى',
-            statusCode: statusCode,
-          );
+          if (kDebugMode) {
+            debugPrint(
+              '>>> $statusCode ${err.requestOptions.method} '
+              '${err.requestOptions.path} X-Request-Id: '
+              '${err.response?.headers.value('x-request-id') ?? '-'}',
+            );
+          }
+          return ServerFailure('حدث خطأ غير متوقع', statusCode: statusCode);
         }
         return ServerFailure(
           // Never let an unrelated error read as a rate limit.
@@ -317,6 +350,7 @@ final dioClientProvider = Provider<Dio>((ref) {
   );
 
   dio.interceptors.add(AuthInterceptor(secureStorage));
+  dio.interceptors.add(AppVersionInterceptor());
   dio.interceptors.add(RateLimitRetryInterceptor(dio));
   dio.interceptors.add(
     ErrorMappingInterceptor(

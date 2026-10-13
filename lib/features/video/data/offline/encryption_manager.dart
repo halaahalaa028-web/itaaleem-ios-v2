@@ -65,6 +65,12 @@ class EncryptionManager {
 
   Key? _cachedKey;
 
+  /// Logout: forgets the key (the next download generates a fresh one).
+  Future<void> deleteKey() async {
+    _cachedKey = null;
+    await _storage.delete(key: _keyStorageKey);
+  }
+
   /// A fresh random base IV for one file (base64-encoded, ready to store on
   /// its `offline_videos.encryptionIv`).
   String generateIv() => IV.fromSecureRandom(_aesBlockSize).base64;

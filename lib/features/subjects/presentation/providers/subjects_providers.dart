@@ -29,6 +29,17 @@ final subjectDetailsProvider = FutureProvider.autoDispose.family<Subject, int>((
   return ref.cached(() async {
     final dataSource = ref.read(subjectsRemoteDataSourceProvider);
     final subject = await dataSource.getSubjectDetails(id);
+    if (kDebugMode) {
+      final card = subject.accessCard;
+      debugPrint(
+        card == null
+            ? '[access_card] MISSING from GET /subjects/$id — no activation card'
+            : '[access_card] subject $id: show=${card.show} '
+                  'activation=${card.activationEnabled} '
+                  'purchase=${card.purchaseEnabled} '
+                  'request_status=${card.requestStatus}',
+      );
+    }
     // An embed shorter than `lessons_count` may be leaving out the paid
     // lessons — fetch the full list in that case too.
     if (subject.lessons.length >= subject.lessonsCount) {
@@ -43,15 +54,7 @@ final subjectDetailsProvider = FutureProvider.autoDispose.family<Subject, int>((
     try {
       final lessons = await dataSource.getLessons(subjectId: id);
       if (lessons.length <= subject.lessons.length) return subject;
-      return Subject(
-        id: subject.id,
-        name: subject.name,
-        description: subject.description,
-        lessonsCount: subject.lessonsCount,
-        examsCount: subject.examsCount,
-        lessons: lessons,
-        exams: subject.exams,
-      );
+      return subject.withLessons(lessons);
     } catch (e) {
       if (kDebugMode) {
         debugPrint(
@@ -99,10 +102,15 @@ final homeLessonsProvider = FutureProvider.autoDispose<List<SubjectLesson>>((
 });
 
 /// Watched by the screens that list subjects: once the list is in, the
-/// first subject's details start loading in the background (and stay cached
-/// via [subjectDetailsProvider]'s TTL), so opening it is instant.
+/// first few subjects' details start loading in the background (and stay
+/// cached via [subjectDetailsProvider]'s TTL), so opening one is instant.
+/// Capped so a long list doesn't fire a burst of requests.
 final prefetchFirstSubjectProvider = Provider.autoDispose<void>((ref) {
   final subjects = ref.watch(subjectsListProvider).valueOrNull;
   if (subjects == null || subjects.isEmpty) return;
-  ref.listen(subjectDetailsProvider(subjects.first.id), (_, _) {});
+  for (final subject in subjects.take(_prefetchCount)) {
+    ref.listen(subjectDetailsProvider(subject.id), (_, _) {});
+  }
 });
+
+const _prefetchCount = 3;

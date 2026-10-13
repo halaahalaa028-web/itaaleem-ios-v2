@@ -16,6 +16,8 @@ class AppSettings {
     this.maintenanceMessage,
     this.aiEnabled = false,
     this.sequentialMode = false,
+    this.rateAppEnabled = false,
+    this.rateAppUrl,
   });
 
   final String? appName;
@@ -38,4 +40,10 @@ class AppSettings {
   /// completed — see `isSequentiallyLocked`. Off (every unlocked lecture
   /// playable in any order) until the backend turns it on.
   final bool sequentialMode;
+
+  /// `rate_app.enabled` — shows "قيّم التطبيق". Off when absent.
+  final bool rateAppEnabled;
+
+  /// `rate_app.url` — the store page (only ever `http(s)`).
+  final String? rateAppUrl;
 }

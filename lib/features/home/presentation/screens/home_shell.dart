@@ -10,6 +10,7 @@ import 'package:itaaleem/features/home/presentation/screens/subjects_screen.dart
 import 'package:itaaleem/features/update/presentation/widgets/update_available_banner.dart';
 import 'package:itaaleem/features/video/presentation/screens/downloads_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:itaaleem/core/widgets/content_width_limit.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -157,23 +158,28 @@ class _HomeShellState extends ConsumerState<HomeShell> {
                   children: [
                     _LazyTab(
                       visited: _visitedTabs.contains(0),
-                      builder: () => HomeScreen(
-                        onSubjectsTap: () => _goToTab(1),
-                        onNotificationsTap: () =>
-                            context.push(notificationsPath),
+                      builder: () => ContentWidthLimit(
+                        child: HomeScreen(
+                          onSubjectsTap: () => _goToTab(1),
+                          onNotificationsTap: () =>
+                              context.push(notificationsPath),
+                        ),
                       ),
                     ),
                     _LazyTab(
                       visited: _visitedTabs.contains(1),
-                      builder: () => const SubjectsScreen(),
+                      builder: () =>
+                          const ContentWidthLimit(child: SubjectsScreen()),
                     ),
                     _LazyTab(
                       visited: _visitedTabs.contains(2),
-                      builder: () => const DownloadsScreen(),
+                      builder: () =>
+                          const ContentWidthLimit(child: DownloadsScreen()),
                     ),
                     _LazyTab(
                       visited: _visitedTabs.contains(3),
-                      builder: () => const AccountTab(),
+                      builder: () =>
+                          const ContentWidthLimit(child: AccountTab()),
                     ),
                     if (isAdmin)
                       _LazyTab(

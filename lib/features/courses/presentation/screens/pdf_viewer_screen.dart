@@ -1,6 +1,6 @@
+import 'package:itaaleem/core/content/content_policy.dart';
 import 'dart:io';
 
-import 'package:itaaleem/app/theme/app_theme.dart';
 import 'package:itaaleem/core/network/dio_client.dart';
 import 'package:itaaleem/core/services/download_service.dart';
 import 'package:itaaleem/core/widgets/app_toast.dart';
@@ -14,10 +14,10 @@ import 'package:itaaleem/features/courses/presentation/widgets/identity_watermar
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:itaaleem/core/widgets/content_watermark.dart';
+import 'package:itaaleem/core/widgets/server_watermark.dart';
 import 'package:flutter/material.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/lesson_access.dart';
 import 'package:itaaleem/features/subjects/data/content_file_access.dart';
-import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
@@ -53,7 +53,7 @@ class PdfViewerScreen extends ConsumerWidget {
 
     return SecureScreen(
       child: Scaffold(
-        backgroundColor: AppColors.darkBackground,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
         body: SafeArea(
           child: Column(
             children: [
@@ -64,7 +64,7 @@ class PdfViewerScreen extends ConsumerWidget {
                 child: detailsAsync.when(
                   loading: () => Center(
                     child: CircularProgressIndicator(
-                      color: context.palette.primaryOnDark,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   error: (error, stackTrace) => ErrorView(
@@ -83,10 +83,12 @@ class PdfViewerScreen extends ConsumerWidget {
                       );
                     }
                     if (pdf == null) {
-                      return const Center(
+                      return Center(
                         child: Text(
                           'لا يوجد ملف PDF لهذا الدرس',
-                          style: TextStyle(color: AppColors.darkTextPrimary),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
                         ),
                       );
                     }
@@ -138,13 +140,21 @@ class _Header extends StatelessWidget {
         horizontal: AppSpacing.sm,
         vertical: AppSpacing.sm,
       ),
-      decoration: BoxDecoration(gradient: context.palette.brandGradient),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            width: 0.5,
+          ),
+        ),
+      ),
       child: Row(
         children: [
           IconButton(
             onPressed: () => context.pop(),
             icon: const BackButtonIcon(),
-            color: AppColors.darkTextPrimary,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           Expanded(
             child: Text(
@@ -153,7 +163,7 @@ class _Header extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: AppColors.darkTextPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -183,13 +193,13 @@ class _LockedPdf extends StatelessWidget {
             Icon(
               Icons.lock_rounded,
               size: 48,
-              color: context.palette.primaryOnDark,
+              color: Theme.of(context).colorScheme.primary,
             ),
             const SizedBox(height: AppSpacing.base),
             Text(
               const ContentLockedException().displayMessage,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.darkTextPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             const SizedBox(height: AppSpacing.base),
             FilledButton(
@@ -603,27 +613,32 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
             fit: StackFit.expand,
             children: [
               _buildViewer(),
-              if (student != null && _file != null) ...[
+              if (student != null && _file != null)
                 Positioned.fill(
-                  child: ContentWatermark(
-                    studentName: student.fullName,
-                    studentPhone: student.mobile,
+                  child: ProtectedWatermark(
+                    lessonId: widget.lectureId,
+                    isPdf: true,
+                    legacy: [
+                      ContentWatermark(
+                        studentName: student.fullName,
+                        studentPhone: student.mobile,
+                      ),
+                      IdentityWatermark(
+                        studentName: student.fullName,
+                        studentMobile: student.mobile,
+                      ),
+                    ],
                   ),
                 ),
-                Positioned.fill(
-                  child: IdentityWatermark(
-                    studentName: student.fullName,
-                    studentMobile: student.mobile,
-                  ),
-                ),
-              ],
             ],
           ),
         ),
         _BottomBar(
           currentPage: _currentPage,
           totalPages: _totalPages > 0 ? _totalPages : null,
-          isDownloadable: widget.pdf.isDownloadable,
+          isDownloadable:
+              widget.pdf.isDownloadable &&
+              ref.watch(contentPolicyProvider).canDownloadPdf,
           isDownloading: _downloading,
           downloadProgress: _downloadProgress,
           onDownload: _download,
@@ -641,7 +656,7 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
           children: [
             Text(
               _loadError!,
-              style: const TextStyle(color: AppColors.darkTextPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
             ),
             const SizedBox(height: AppSpacing.md),
             FilledButton.icon(
@@ -664,7 +679,7 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
               width: 40,
               height: 40,
               child: CircularProgressIndicator(
-                color: context.palette.primaryOnDark,
+                color: Theme.of(context).colorScheme.primary,
                 value: progress,
               ),
             ),
@@ -673,8 +688,8 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
               progress != null
                   ? 'جاري تحميل الملف... ${(progress * 100).round()}٪'
                   : 'جاري تحميل الملف...',
-              style: const TextStyle(
-                color: AppColors.darkTextSecondary,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 13,
               ),
             ),
@@ -688,7 +703,7 @@ class _PdfBodyState extends ConsumerState<_PdfBody> {
       initialPageNumber: _currentPage,
       params: PdfViewerParams(
         maxScale: 5,
-        backgroundColor: AppColors.darkBackground,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
         onViewerReady: _onViewerReady,
         onPageChanged: _onPageChanged,
         onDocumentLoadFinished: (documentRef, loadSucceeded) {
@@ -725,7 +740,7 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.darkBackground,
+      color: Theme.of(context).colorScheme.surfaceContainer,
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsetsDirectional.symmetric(
@@ -752,7 +767,7 @@ class _Toolbar extends StatelessWidget {
               margin: const EdgeInsetsDirectional.symmetric(
                 horizontal: AppSpacing.xs,
               ),
-              color: AppColors.darkSurfaceVariant,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
             _ToolButton(
               icon: Icons.search_rounded,
@@ -787,8 +802,8 @@ class _ToolButton extends StatelessWidget {
       padding: const EdgeInsetsDirectional.only(end: 6),
       child: Material(
         color: isActive
-            ? context.palette.primaryOnDark.withValues(alpha: 0.3)
-            : AppColors.darkTextPrimary.withValues(alpha: 0.06),
+            ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
+            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(AppRadius.md),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -802,10 +817,10 @@ class _ToolButton extends StatelessWidget {
                   icon,
                   size: 20,
                   color: disabled
-                      ? AppColors.darkSurfaceVariant
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
                       : (isActive
-                            ? context.palette.primaryOnDark
-                            : AppColors.darkTextPrimary),
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.onSurface),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -813,10 +828,10 @@ class _ToolButton extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     color: disabled
-                        ? AppColors.darkSurfaceVariant
+                        ? Theme.of(context).colorScheme.surfaceContainerHighest
                         : (isActive
-                              ? context.palette.primaryOnDark
-                              : AppColors.darkTextSecondary),
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ),
               ],
@@ -866,7 +881,7 @@ class _SearchBar extends StatelessWidget {
     final canStep = activeResult != null && activeResult.matches.isNotEmpty;
 
     return Container(
-      color: AppColors.darkBackground,
+      color: Theme.of(context).colorScheme.surfaceContainer,
       padding: const EdgeInsetsDirectional.symmetric(
         horizontal: AppSpacing.md,
         vertical: AppSpacing.sm,
@@ -878,13 +893,17 @@ class _SearchBar extends StatelessWidget {
               controller: controller,
               autofocus: true,
               textInputAction: TextInputAction.search,
-              style: const TextStyle(color: AppColors.darkTextPrimary),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
               decoration: InputDecoration(
                 isDense: true,
                 hintText: 'ابحث في النص...',
-                hintStyle: const TextStyle(color: AppColors.darkTextTertiary),
+                hintStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.outline,
+                ),
                 filled: true,
-                fillColor: AppColors.darkTextPrimary.withValues(alpha: 0.08),
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.onSurface.withValues(alpha: 0.08),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AppSpacing.md,
                   vertical: 10,
@@ -901,31 +920,31 @@ class _SearchBar extends StatelessWidget {
             const SizedBox(width: AppSpacing.sm),
             Text(
               countLabel,
-              style: const TextStyle(
-                color: AppColors.darkTextSecondary,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontSize: 12,
               ),
             ),
           ],
           IconButton(
             onPressed: canStep ? onPrevious : null,
-            icon: const Icon(
+            icon: Icon(
               Icons.keyboard_arrow_up_rounded,
-              color: AppColors.darkTextPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           IconButton(
             onPressed: canStep ? onNext : null,
-            icon: const Icon(
+            icon: Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: AppColors.darkTextPrimary,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
           IconButton(
             onPressed: onClose,
-            icon: const Icon(
+            icon: Icon(
               Icons.close_rounded,
-              color: AppColors.darkTextSecondary,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -958,7 +977,7 @@ class _BottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.darkBackground,
+      color: Theme.of(context).colorScheme.surfaceContainer,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -966,8 +985,12 @@ class _BottomBar extends StatelessWidget {
             LinearProgressIndicator(
               value: downloadProgress,
               minHeight: 3,
-              backgroundColor: AppColors.darkSurfaceVariant,
-              valueColor: AlwaysStoppedAnimation(context.palette.primaryOnDark),
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation(
+                Theme.of(context).colorScheme.primary,
+              ),
             ),
           Padding(
             padding: const EdgeInsetsDirectional.symmetric(
@@ -987,8 +1010,8 @@ class _BottomBar extends StatelessWidget {
                       totalPages != null
                           ? 'صفحة $currentPage من $totalPages'
                           : 'صفحة $currentPage',
-                      style: const TextStyle(
-                        color: AppColors.darkTextSecondary,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 13,
                       ),
                     ),
@@ -1005,7 +1028,7 @@ class _BottomBar extends StatelessWidget {
                           height: 16,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: context.palette.primaryOnDark,
+                            color: Theme.of(context).colorScheme.primary,
                             value: downloadProgress,
                           ),
                         ),
@@ -1015,7 +1038,7 @@ class _BottomBar extends StatelessWidget {
                               ? 'جاري التحميل ${(downloadProgress! * 100).round()}٪'
                               : 'جاري التحميل...',
                           style: TextStyle(
-                            color: context.palette.primaryOnDark,
+                            color: Theme.of(context).colorScheme.primary,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1027,11 +1050,13 @@ class _BottomBar extends StatelessWidget {
                       onPressed: onDownload,
                       icon: Icon(
                         Icons.download_rounded,
-                        color: context.palette.primaryOnDark,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                       label: Text(
                         'تحميل',
-                        style: TextStyle(color: context.palette.primaryOnDark),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
               ],

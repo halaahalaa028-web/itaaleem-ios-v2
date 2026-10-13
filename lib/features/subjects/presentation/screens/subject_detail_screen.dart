@@ -1,3 +1,6 @@
+import 'package:itaaleem/core/widgets/app_sheet.dart';
+import 'package:itaaleem/core/content/content_policy.dart';
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:itaaleem/core/widgets/app_empty_state.dart';
 import 'package:itaaleem/features/subjects/presentation/utils/protected_file_open.dart';
@@ -22,6 +25,8 @@ import 'package:itaaleem/features/subjects/presentation/utils/pdf_download.dart'
 import 'package:itaaleem/features/subjects/presentation/widgets/lesson_access.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/subject_detail/attachment_tile.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/subject_detail/lecture_tile.dart';
+import 'package:itaaleem/features/subjects/presentation/widgets/subject_detail/subject_access_card.dart';
+import 'package:itaaleem/features/settings/presentation/rate_app.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/subject_detail/subject_detail_header.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/subject_detail/subject_detail_skeleton.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/subject_detail/subject_progress_card.dart';
@@ -86,14 +91,37 @@ class _Padded extends StatelessWidget {
 // Real (GET /subjects/{id})
 // ============================================================================
 
-class _RealSubjectDetail extends ConsumerWidget {
+class _RealSubjectDetail extends ConsumerStatefulWidget {
   const _RealSubjectDetail({required this.subjectId});
 
   final int subjectId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_RealSubjectDetail> createState() => _RealSubjectDetailState();
+}
+
+class _RealSubjectDetailState extends ConsumerState<_RealSubjectDetail> {
+  // Debug/profile timing: route push → subject content on screen.
+  final _openWatch = Stopwatch()..start();
+  bool _openLogged = false;
+
+  int get subjectId => widget.subjectId;
+
+  void _logOpen() {
+    if (_openLogged || kReleaseMode) return;
+    _openLogged = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugPrint(
+        '[perf] subject $subjectId open → content: '
+        '${_openWatch.elapsedMilliseconds}ms',
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final subjectAsync = ref.watch(subjectDetailsProvider(subjectId));
+    if (subjectAsync.hasValue) _logOpen();
 
     return subjectAsync.when(
       loading: () => const SubjectDetailSkeleton(),
@@ -133,7 +161,21 @@ class _RealSubjectBody extends ConsumerWidget {
       ),
     );
     // Whatever was watched there should show up here straight away.
-    if (context.mounted) ref.invalidate(subjectLessonsProgressProvider(_id));
+    if (!context.mounted) return;
+    ref.invalidate(subjectLessonsProgressProvider(_id));
+    try {
+      final progress = await ref.read(
+        subjectLessonsProgressProvider(_id).future,
+      );
+      if (!context.mounted) return;
+      final completed = SubjectProgressSummary.from(
+        subject.lessons,
+        progress,
+      ).completedIds;
+      await maybePromptRateApp(context, ref, completed);
+    } catch (_) {
+      // Progress unavailable — no prompt this time.
+    }
   }
 
   Future<void> _refresh(WidgetRef ref) async {
@@ -148,6 +190,10 @@ class _RealSubjectBody extends ConsumerWidget {
     final lessons = [...subject.lessons]
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
     final progressAsync = ref.watch(subjectLessonsProgressProvider(_id));
+    final accessCard = effectiveAccessCard(
+      subject,
+      hasLockedLessons: lessons.any((l) => isLessonLocked(ref, l)),
+    );
     final summary = SubjectProgressSummary.from(
       lessons,
       progressAsync.valueOrNull ?? const {},
@@ -244,6 +290,15 @@ class _RealSubjectBody extends ConsumerWidget {
                           started: summary.hasStarted,
                         )
                       : const _ProgressCardPlaceholder(),
+                ),
+              if (accessCard != null)
+                _Padded(
+                  child: SubjectAccessCardView(
+                    key: ValueKey('access-card-$_id'),
+                    subjectId: _id,
+                    subjectName: subject.name,
+                    card: accessCard,
+                  ),
                 ),
               if (lessons.isNotEmpty && teachers.isEmpty)
                 SubjectSection(
@@ -391,6 +446,9 @@ class _RealFilesSection extends ConsumerWidget {
               ),
               onOpen: () => openAttachment(context, ref, file),
               onDownload: !file.isDownloadable || file.isLocked
+                  ? null
+                  : file.isPdf &&
+                        !ref.watch(contentPolicyProvider).canDownloadPdf
                   ? null
                   : file.isPdf
                   ? () => downloadPdf(
@@ -628,16 +686,11 @@ class _DemoSubjectDetail extends StatelessWidget {
   final int subjectId;
 
   void _showDemoNote(BuildContext context) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'دي نسخة تجريبية — المحتوى الكامل متاح بعد تفعيل حسابك',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+    showAppSnack(
+      context,
+      'دي نسخة تجريبية — المحتوى الكامل متاح بعد تفعيل حسابك',
+      type: AppSnackType.info,
+    );
   }
 
   @override

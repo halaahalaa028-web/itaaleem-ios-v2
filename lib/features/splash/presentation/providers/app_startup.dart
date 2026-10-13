@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint, kReleaseMode;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
+import 'package:itaaleem/features/auth/presentation/providers/signed_in_before_provider.dart';
 import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
 import 'package:itaaleem/features/onboarding/presentation/providers/onboarding_provider.dart';
 import 'package:itaaleem/features/onboarding/presentation/providers/permissions_onboarding_provider.dart';
@@ -13,9 +15,9 @@ const splashLogoAsset = 'assets/images/splash_logo.png';
 
 /// The splash stays up at least this long (counted from launch), so it
 /// reads as a deliberate branded moment rather than a flash. Kept short:
-/// the session/center load (~1.1s cold on a mid-range phone) is what should
-/// set the pace, not a timer.
-const minSplashDuration = Duration(milliseconds: 1000);
+/// a cached session enters immediately (revalidated in the background), so
+/// nothing else should hold the first screen back.
+const minSplashDuration = Duration(milliseconds: 400);
 
 /// Past this, the splash stops waiting and shows its "تعذر الاتصال" state
 /// with a retry instead of hanging.
@@ -57,6 +59,7 @@ final startupWorkProvider = FutureProvider<void>((ref) async {
     sessionAndCenter(),
     settle(ref.read(onboardingSeenProvider.future)),
     settle(ref.read(permissionsOnboardingSeenProvider.future)),
+    settle(ref.read(signedInBeforeProvider.future)),
   ]).timeout(
     _maxStartupWait,
     onTimeout: () => throw const StartupTimeoutException(),
@@ -95,7 +98,15 @@ class SplashReleaseController extends Notifier<bool> {
   }
 
   void release() {
-    if (!state) state = true;
+    if (state) return;
+    state = true;
+    final launchedAt = _launchedAt;
+    if (launchedAt != null && !kReleaseMode) {
+      debugPrint(
+        '[perf] app start → first screen: '
+        '${DateTime.now().difference(launchedAt).inMilliseconds}ms',
+      );
+    }
   }
 }
 

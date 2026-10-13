@@ -210,7 +210,30 @@ class Subject {
     this.teacherPhotoUrl,
     this.teachers = const [],
     this.progressPercent,
+    this.accessCard,
   });
+
+  /// `access_card` — the "فعّل المادة" card's config. `null` on an older
+  /// server that doesn't send it (no card shown then).
+  final SubjectAccessCard? accessCard;
+
+  /// A copy with a replaced lessons list (the `GET /lessons` fallback).
+  Subject withLessons(List<SubjectLesson> lessons) => Subject(
+    id: id,
+    name: name,
+    description: description,
+    iconUrl: iconUrl,
+    lessonsCount: lessonsCount,
+    examsCount: examsCount,
+    lessons: lessons,
+    exams: exams,
+    teacherId: teacherId,
+    teacherName: teacherName,
+    teacherPhotoUrl: teacherPhotoUrl,
+    teachers: teachers,
+    progressPercent: progressPercent,
+    accessCard: accessCard,
+  );
 
   /// Every doctor teaching this subject — a subject shared by several
   /// doctors appears under each of them on "موادي".
@@ -234,4 +257,50 @@ class Subject {
   final int examsCount;
   final List<SubjectLesson> lessons;
   final List<SubjectExam> exams;
+}
+
+/// The subject's `access_card`: whether to show the activation card above
+/// the lectures, and which actions it offers.
+///
+/// The server already forces `purchaseEnabled` off (and the text/url null)
+/// for `X-Platform: ios`; [showPurchase] re-checks the platform as a second
+/// guard so iOS never shows any purchase UI.
+class SubjectAccessCard {
+  const SubjectAccessCard({
+    required this.show,
+    this.isSubscribed = false,
+    this.activationEnabled = false,
+    this.purchaseEnabled = false,
+    this.purchaseText,
+    this.purchaseUrl,
+    this.requestStatusSent = false,
+    this.requestStatus,
+    this.requestRejectedReason,
+  });
+
+  /// Whether the server sent `request_status` at all (older servers don't —
+  /// the app then falls back to the 409 / local marker).
+  final bool requestStatusSent;
+
+  /// `pending` | `rejected` | `null` (no open request). Always null on iOS.
+  final String? requestStatus;
+  final String? requestRejectedReason;
+
+  bool get requestPending => requestStatus == 'pending';
+  bool get requestRejected => requestStatus == 'rejected';
+
+  final bool show;
+  final bool isSubscribed;
+  final bool activationEnabled;
+  final bool purchaseEnabled;
+  final String? purchaseText;
+
+  /// Only ever an `http(s)` URL (anything else is dropped while parsing).
+  final String? purchaseUrl;
+
+  bool showPurchase({required bool isIOS}) =>
+      !isIOS &&
+      purchaseEnabled &&
+      ((purchaseUrl?.isNotEmpty ?? false) ||
+          (purchaseText?.trim().isNotEmpty ?? false));
 }

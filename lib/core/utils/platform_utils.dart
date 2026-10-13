@@ -22,3 +22,7 @@ class PlatformUtils {
 
 /// What a combined "phone or email" login field contains.
 bool looksLikeEmail(String value) => value.trim().contains('@');
+
+/// The `X-Platform` header sent on every API request. The server treats a
+/// missing header as iOS.
+String get platformHeaderValue => PlatformUtils.isIOS ? 'ios' : 'android';

@@ -26,6 +26,17 @@ final class ServerFailure extends Failure {
   /// The account is locked to another device (`device_limit`, or any other
   /// `device_*` code on a 401/403).
   bool get isDeviceLock => code != null && code!.startsWith('device');
+
+  /// 403 `{locked: true}` — the content is for subscribers only.
+  bool get isContentLocked => code == 'locked';
+}
+
+const lockedForSubscribersMessage = 'هذا المحتوى متاح للمشتركين فقط';
+
+/// Whether [error] is a 403 `{locked: true}`.
+bool isLockedContentError(Object error) {
+  final f = failureOf(error);
+  return f is ServerFailure && f.isContentLocked;
 }
 
 /// No connectivity, DNS failure, timeout, socket exception, etc. — the

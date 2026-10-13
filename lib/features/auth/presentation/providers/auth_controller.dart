@@ -5,9 +5,11 @@ import 'package:itaaleem/core/services/fcm_service.dart';
 import 'package:itaaleem/core/services/notification_service.dart';
 import 'package:itaaleem/core/storage/secure_storage_service.dart';
 import 'package:itaaleem/core/utils/result.dart';
+import 'package:itaaleem/features/auth/data/account_data_wiper.dart';
 import 'package:itaaleem/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:itaaleem/features/auth/domain/entities/student.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_providers.dart';
+import 'package:itaaleem/features/auth/presentation/providers/signed_in_before_provider.dart';
 import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
 import 'package:itaaleem/features/subjects/data/datasources/subjects_remote_data_source.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
@@ -47,30 +49,40 @@ class AuthController extends AsyncNotifier<Student?> {
 
   @override
   Future<Student?> build() async {
+    // Any real session (restored, logged in, registered) means this install
+    // has had an account — a later logout lands on login, not register.
+    listenSelf((_, next) {
+      final student = next.valueOrNull;
+      if (student != null && !student.isDemo) {
+        ref.read(signedInBeforeProvider.notifier).mark();
+      }
+    });
     final prefs = await SharedPreferences.getInstance();
     if (prefs.getBool(_demoModeKey) ?? false) return demoStudent;
     final repository = ref.watch(authRepositoryProvider);
+    // Cached session → enter the app right away and revalidate
+    // `GET /profile` in the background (stale-while-revalidate). The splash
+    // never waits on the network when there's something to show.
+    final cached = await repository.cachedSession();
     final restoreFuture = repository.restoreSession();
-    // On a slow/flaky network `GET /profile` can take up to its 15s timeout,
-    // which kept the splash up that whole time. After a short grace period,
-    // enter the app with the cached profile instead (a rejected token still
-    // logs out through the 401 handler; with no cache we keep waiting).
+    if (cached != null) {
+      unawaited(
+        restoreFuture.then((fresh) {
+          // Unless the session changed meanwhile (logout / another login).
+          if (state.valueOrNull?.id != cached.id) return;
+          // `null` = the token was rejected (401) and the session cleared.
+          state = AsyncData(fresh);
+        }, onError: (Object _) {}),
+      );
+      return cached;
+    }
+    // No cache (first sign-in on this install, or an old build's state):
+    // wait for the restore, but enter as soon as a cache appears.
     return restoreFuture.timeout(
       _restoreGracePeriod,
       onTimeout: () async {
-        final cached = await repository.cachedSession();
-        if (cached == null) return restoreFuture;
-        // Stale-while-revalidate: enter with the cache now, swap in the
-        // fresh profile when it lands — unless the session changed meanwhile
-        // (logout / another login).
-        unawaited(
-          restoreFuture.then((fresh) {
-            if (fresh != null && state.valueOrNull?.id == cached.id) {
-              state = AsyncData(fresh);
-            }
-          }, onError: (Object _) {}),
-        );
-        return cached;
+        final late = await repository.cachedSession();
+        return late ?? restoreFuture;
       },
     );
   }
@@ -117,11 +129,14 @@ class AuthController extends AsyncNotifier<Student?> {
       return;
     }
     state = const AsyncLoading<Student?>().copyWithPrevious(state);
-    await ref.read(fcmServiceProvider).deleteLocalToken();
+    final fcm = ref.read(fcmServiceProvider);
+    await fcm.unregisterFromServer();
+    await fcm.deleteLocalToken();
     await ref.read(centerMembershipProvider.notifier).clearLocalCache();
     await SubjectsCache.clear();
     final useCase = ref.read(logoutUseCaseProvider);
     await useCase();
+    await wipeAccountData(ref);
     // Regardless of server-side outcome, the repository always clears the
     // local session — reflect that as logged-out immediately.
     state = const AsyncData<Student?>(null);
@@ -141,6 +156,8 @@ class AuthController extends AsyncNotifier<Student?> {
     await secureStorage.deleteStudentProfileJson();
     await SubjectsCache.clear();
     await ref.read(centerMembershipProvider.notifier).clearLocalCache();
+    await ref.read(fcmServiceProvider).deleteLocalToken();
+    await wipeAccountData(ref);
     state = const AsyncData<Student?>(null);
   }
 
@@ -228,6 +245,8 @@ class AuthController extends AsyncNotifier<Student?> {
         try {
           await SubjectsCache.clear();
           await ref.read(centerMembershipProvider.notifier).clearLocalCache();
+          await ref.read(fcmServiceProvider).deleteLocalToken();
+          await wipeAccountData(ref);
         } catch (e) {
           if (kDebugMode) {
             debugPrint('>>> DELETE ACCOUNT cache clear failed: $e');

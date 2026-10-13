@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:itaaleem/core/widgets/content_watermark.dart';
+import 'package:itaaleem/core/widgets/server_watermark.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:itaaleem/app/theme/app_theme.dart';
 import 'package:itaaleem/core/network/dio_client.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfrx/pdfrx.dart';
@@ -20,9 +20,22 @@ import 'package:itaaleem/core/theme/app_spacing.dart';
 /// disk (re-opening a large file is then instant), and shown from that file
 /// with pdfrx. A failure shows a clear message with a retry.
 class LessonPdfView extends ConsumerStatefulWidget {
-  const LessonPdfView({super.key, required this.pdfUrl, this.fileRef});
+  const LessonPdfView({
+    super.key,
+    required this.pdfUrl,
+    this.fileRef,
+    this.onPageChanged,
+    this.onTap,
+  });
 
   final String? pdfUrl;
+
+  /// `(page, pageCount)`, 1-based — on load and on every page change.
+  final void Function(int page, int pageCount)? onPageChanged;
+
+  /// A single tap on the page (not a double-tap zoom) — the full-screen
+  /// toggle in [LessonPdfScreen].
+  final VoidCallback? onTap;
 
   /// For signed (expiring) URLs: the cache key and link refresh source.
   final ContentFileRef? fileRef;
@@ -47,6 +60,7 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
   String? _lockedMessage;
   CancelToken? _cancelToken;
   final _pdfController = PdfViewerController();
+  int _pageCount = 0;
 
   @override
   void initState() {
@@ -246,7 +260,9 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
                 value: progress,
                 strokeWidth: 5,
                 color: Theme.of(context).colorScheme.primary,
-                backgroundColor: AppColors.darkSurfaceVariant,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
               ),
             ),
             const SizedBox(height: AppSpacing.base),
@@ -254,10 +270,10 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
               progress == null
                   ? 'جاري تحميل الملف...'
                   : 'جاري تحميل الملف ${(progress * 100).round()}%',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Cairo',
                 fontSize: 14,
-                color: AppColors.darkTextPrimary,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -270,9 +286,26 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
       controller: _pdfController,
       params: PdfViewerParams(
         maxScale: 5,
-        backgroundColor: AppColors.darkBackground,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
         onDocumentLoadFinished: (documentRef, loadSucceeded) {
           if (!loadSucceeded) _onViewerFailed();
+        },
+        onViewerReady: (document, controller) {
+          _pageCount = document.pages.length;
+          widget.onPageChanged?.call(controller.pageNumber ?? 1, _pageCount);
+        },
+        onPageChanged: (page) {
+          if (page != null && _pageCount > 0) {
+            widget.onPageChanged?.call(page, _pageCount);
+          }
+        },
+        onGeneralTap: (context, controller, details) {
+          if (details.type != PdfViewerGeneralTapType.tap ||
+              widget.onTap == null) {
+            return false;
+          }
+          widget.onTap!();
+          return false;
         },
         viewerOverlayBuilder: (context, size, handleLinkTap) => [
           PdfViewerScrollThumb(
@@ -288,9 +321,17 @@ class _LessonPdfViewState extends ConsumerState<LessonPdfView> {
       children: [
         viewer,
         Positioned.fill(
-          child: ContentWatermark(
-            studentName: student.fullName,
-            studentPhone: student.mobile,
+          child: ProtectedWatermark(
+            lessonId: widget.fileRef?.kind == 'lesson'
+                ? widget.fileRef!.id
+                : null,
+            isPdf: true,
+            legacy: [
+              ContentWatermark(
+                studentName: student.fullName,
+                studentPhone: student.mobile,
+              ),
+            ],
           ),
         ),
       ],
@@ -315,10 +356,10 @@ class _Message extends StatelessWidget {
             Text(
               text,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'Cairo',
                 fontSize: 14,
-                color: AppColors.darkTextSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             if (action != null) ...[

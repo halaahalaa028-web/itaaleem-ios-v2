@@ -87,6 +87,30 @@ Subject subjectFromJson(Map<String, dynamic> json) {
               .map((e) => subjectExamFromJson(e as Map<String, dynamic>))
               .toList()
         : const [],
+    accessCard: subjectAccessCardFromJson(json['access_card']),
+  );
+}
+
+/// `access_card` — `null` when absent or malformed (older server).
+SubjectAccessCard? subjectAccessCardFromJson(Object? raw) {
+  if (raw is! Map) return null;
+  final url = raw['purchase_url']?.toString().trim();
+  final text = raw['purchase_text']?.toString().trim();
+  final lower = url?.toLowerCase() ?? '';
+  final status = raw['request_status']?.toString().trim().toLowerCase();
+  final reason = raw['request_rejected_reason']?.toString().trim();
+  return SubjectAccessCard(
+    requestStatusSent: raw.containsKey('request_status'),
+    requestStatus: status == null || status.isEmpty ? null : status,
+    requestRejectedReason: reason == null || reason.isEmpty ? null : reason,
+    show: _flag(raw['show']) ?? false,
+    isSubscribed: _flag(raw['is_subscribed']) ?? false,
+    activationEnabled: _flag(raw['activation_enabled']) ?? false,
+    purchaseEnabled: _flag(raw['purchase_enabled']) ?? false,
+    purchaseText: text == null || text.isEmpty ? null : text,
+    purchaseUrl: lower.startsWith('http://') || lower.startsWith('https://')
+        ? url
+        : null,
   );
 }
 
@@ -193,7 +217,8 @@ SubjectExam subjectExamFromJson(Map<String, dynamic> json) {
     questionsCount: json['questions_count'] as int? ?? 0,
     durationMinutes: json['duration_minutes'] as int?,
     passPercentage: json['pass_percentage'] as int? ?? 60,
-    isLocked: json['is_locked'] as bool? ?? false,
+    isLocked:
+        _flag(json['is_locked']) == true || _flag(json['has_access']) == false,
   );
 }
 

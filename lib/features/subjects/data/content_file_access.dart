@@ -89,6 +89,18 @@ class ContentLockedException implements Exception {
   String toString() => message;
 }
 
+/// 403 `{download_disabled: true}` — the center turned PDF downloads off.
+class ContentDownloadDisabledException implements Exception {
+  const ContentDownloadDisabledException([this.message = defaultMessage]);
+
+  final String message;
+
+  static const defaultMessage = 'التحميل غير مسموح من قبل السنتر';
+
+  @override
+  String toString() => message;
+}
+
 /// 403 for an expired / tampered signed link.
 class ContentLinkExpiredException implements Exception {
   const ContentLinkExpiredException();
@@ -158,6 +170,12 @@ Exception? classifyContentError(DioException e) {
   final text = data?.toString() ?? '';
   if (kDebugMode) debugPrint('[content-file] 403: $text');
   if (data is Map) {
+    if (data['download_disabled'] == true) {
+      return ContentDownloadDisabledException(
+        data['message']?.toString() ??
+            ContentDownloadDisabledException.defaultMessage,
+      );
+    }
     if (data['locked'] == true) {
       return ContentLockedException(
         data['message']?.toString() ?? ContentLockedException.lockedFileMessage,
@@ -166,6 +184,9 @@ Exception? classifyContentError(DioException e) {
     if ((data['message']?.toString() ?? '').contains('صلاحية')) {
       return const ContentLinkExpiredException();
     }
+  }
+  if (text.contains('"download_disabled":true')) {
+    return const ContentDownloadDisabledException();
   }
   if (text.contains('"locked":true') || text.contains('"locked": true')) {
     return const ContentLockedException();

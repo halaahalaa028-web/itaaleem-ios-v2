@@ -2013,6 +2013,7 @@ class _YoutubeMediaKitPlayerState extends State<YoutubeMediaKitPlayer>
           if (posterUrl != null)
             CachedNetworkImage(
               imageUrl: posterUrl,
+              memCacheWidth: 1280,
               fit: BoxFit.cover,
               placeholder: (context, url) => blank,
               errorWidget: (context, url, error) => blank,

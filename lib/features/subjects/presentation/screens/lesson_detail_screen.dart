@@ -1,3 +1,5 @@
+import 'package:itaaleem/features/subjects/presentation/widgets/locked_lecture_access.dart';
+import 'package:itaaleem/core/content/content_policy.dart';
 import 'package:itaaleem/features/home/presentation/providers/content_refresh.dart';
 import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/app/router/route_args.dart';
@@ -77,25 +79,8 @@ class LessonDetailScreen extends ConsumerWidget {
     required bool locked,
   }) async {
     if (locked) {
-      // Resolve everything that needs `ref` *before* the sheet opens: this
-      // widget may be disposed by the time it closes, and a disposed
-      // WidgetRef throws. The container outlives the widget.
-      final container = ProviderScope.containerOf(context, listen: false);
-      final watcher = container.read(subscriptionWatcherProvider);
-      // Re-check the subscription as soon as the sheet closes (e.g. the
-      // center activated the student meanwhile).
-      showPaidContentSheet(context, subjectId: subjectId, lessonId: lesson.id)
-          .then((requested) {
-            // Request sent: leave this screen *before* the profile refresh below.
-            // That refresh makes GoRouter re-parse the location, and this route
-            // (which depends on `state.extra`) then rebuilt as the
-            // "تعذر فتح الصفحة" screen instead of the lesson.
-            if (requested == true && context.mounted) context.pop();
-          })
-          .whenComplete(() {
-            watcher.check();
-            container.invalidate(subjectDetailsProvider(subjectId));
-          });
+      // Activation lives on the subject's page — go back and open it.
+      openSubjectActivation(context, ref, subjectId);
       return;
     }
     // `has_video: true` but no usable `video_url`: treat as a lesson without
@@ -197,6 +182,10 @@ class LessonDetailScreen extends ConsumerWidget {
                           _openVideo(context, ref, lesson, locked: locked),
                     ),
                   ),
+                  if (locked) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    LockedLectureAccess(subjectId: subjectId),
+                  ],
                   if (!locked && lesson.canPlayVideo) ...[
                     const SizedBox(height: AppSpacing.md),
                     Align(
@@ -279,6 +268,10 @@ class _LessonHeaderCard extends StatelessWidget {
                 tag: 'lesson-thumb-${lesson.id}',
                 child: CachedNetworkImage(
                   imageUrl: thumb,
+                  memCacheWidth:
+                      (MediaQuery.sizeOf(context).width *
+                              MediaQuery.devicePixelRatioOf(context))
+                          .round(),
                   fit: BoxFit.cover,
                   filterQuality: FilterQuality.high,
                   placeholder: (_, _) =>
@@ -420,7 +413,7 @@ class _VideoHeroCard extends StatelessWidget {
                             locked
                                 ? PlatformUtils.hideSubscriptions
                                       ? lockedContentMessage
-                                      : 'محتوى مدفوع — اضغط لطلب الاشتراك'
+                                      : 'محتوى مقفول — فعّله بالكود أو اطلب اشتراك'
                                 : hasVideo
                                 ? 'مشاهدة الفيديو'
                                 : 'لا يوجد فيديو متاح',
@@ -582,6 +575,9 @@ class LessonAttachmentsScreen extends ConsumerWidget {
     final attachmentsAsync = ref.watch(
       lessonAttachmentsProvider((subjectId, lesson.id)),
     );
+    final canDownloadPdf = ref.watch(
+      contentPolicyProvider.select((p) => p.canDownloadPdf),
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('المرفقات')),
@@ -624,7 +620,10 @@ class LessonAttachmentsScreen extends ConsumerWidget {
                     type: 'PDF',
                     locked: lesson.pdfLocked,
                     onTap: () => openLessonPdf(context, lesson),
-                    onDownload: lesson.isDownloadable && !lesson.pdfLocked
+                    onDownload:
+                        canDownloadPdf &&
+                            lesson.isDownloadable &&
+                            !lesson.pdfLocked
                         ? () => downloadPdf(
                             context,
                             ref,
@@ -645,7 +644,8 @@ class LessonAttachmentsScreen extends ConsumerWidget {
                     locked: files[i].isLocked,
                     onTap: () => openAttachment(context, ref, files[i]),
                     onDownload:
-                        files[i].isPdf &&
+                        canDownloadPdf &&
+                            files[i].isPdf &&
                             files[i].isDownloadable &&
                             !files[i].isLocked
                         ? () => downloadPdf(

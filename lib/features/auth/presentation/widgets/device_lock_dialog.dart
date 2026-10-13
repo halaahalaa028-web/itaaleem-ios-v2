@@ -48,10 +48,11 @@ Future<void> showDeviceLockDialog(
           onPressed: () async {
             Navigator.of(dialogContext).pop();
             final uri = await _contactUri(ref, center);
-            if (uri != null && await launchUrlSafely(
-              uri,
-              mode: LaunchMode.externalApplication,
-            )) {
+            if (uri != null &&
+                await launchUrlSafely(
+                  uri,
+                  mode: LaunchMode.externalApplication,
+                )) {
               return;
             }
             if (context.mounted) context.push(supportPath);

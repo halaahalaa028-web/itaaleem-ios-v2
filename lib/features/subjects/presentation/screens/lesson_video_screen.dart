@@ -13,6 +13,7 @@ import 'package:itaaleem/features/video/data/offline/local_range_server.dart';
 import 'package:itaaleem/features/video/data/offline/offline_database.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:itaaleem/core/widgets/content_watermark.dart';
+import 'package:itaaleem/core/widgets/server_watermark.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:itaaleem/features/subjects/data/content_file_access.dart';
@@ -352,10 +353,15 @@ class _LessonVideoScreenState extends ConsumerState<LessonVideoScreen> {
                 _buildPlayer(url, startAt),
                 if (student != null)
                   Positioned.fill(
-                    child: ContentWatermark(
-                      studentName: student.fullName,
-                      studentPhone: student.mobile,
-                      opacity: 0.06,
+                    child: ProtectedWatermark(
+                      lessonId: widget.lessonId,
+                      legacy: [
+                        ContentWatermark(
+                          studentName: student.fullName,
+                          studentPhone: student.mobile,
+                          opacity: 0.06,
+                        ),
+                      ],
                     ),
                   ),
               ],

@@ -1,3 +1,4 @@
+import 'package:itaaleem/core/widgets/app_sheet.dart';
 import 'package:itaaleem/features/subjects/data/content_file_access.dart';
 import 'dart:io';
 
@@ -26,9 +27,7 @@ Future<void> downloadPdf(
   ContentFileRef? fileRef,
 }) async {
   if (url.isEmpty && fileRef == null) return;
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(const SnackBar(content: Text('جاري تحميل الملف...')));
+  showAppSnack(context, 'جاري تحميل الملف...', type: AppSnackType.info);
   final dio = ref.read(dioClientProvider);
   final downloads = ref.read(downloadServiceProvider);
   File? partial;
@@ -59,6 +58,10 @@ Future<void> downloadPdf(
       actionLabel: 'فتح الملف',
       onAction: () => OpenFilex.open(savedPath),
     );
+  } on ContentDownloadDisabledException catch (e) {
+    if (context.mounted) {
+      showAppSnack(context, e.message, type: AppSnackType.error);
+    }
   } on ContentLockedException catch (e) {
     if (context.mounted) AppToast.showError(context, e.displayMessage);
   } catch (e) {

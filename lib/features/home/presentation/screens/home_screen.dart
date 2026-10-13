@@ -1,3 +1,5 @@
+import 'package:itaaleem/core/widgets/app_sheet.dart';
+import 'package:itaaleem/features/center/presentation/widgets/social_links_bar.dart';
 import 'package:itaaleem/features/home/presentation/providers/content_refresh.dart';
 import 'dart:async';
 
@@ -428,6 +430,18 @@ class _JoinedHome extends ConsumerWidget {
                   CenterReviewsSection(
                     centerId: membership.centerId,
                     fallbackRating: center?.rating ?? 0,
+                  ),
+                if (!isDemo &&
+                    center != null &&
+                    hasUsableSocialLinks(center.socialLinks))
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.screenHorizontal,
+                      AppSpacing.sectionSpacing,
+                      AppSpacing.screenHorizontal,
+                      0,
+                    ),
+                    child: SocialLinksBar(socialLinks: center.socialLinks),
                   ),
                 const SizedBox(height: 100),
               ],
@@ -1459,49 +1473,23 @@ Future<void> _callCenter(
     if (support != null && support.trim().isNotEmpty) support.trim(),
   }.toList();
 
-  Future<void> dial(String phone) =>
-      launchUrlSafely(Uri(scheme: 'tel', path: phone.replaceAll(' ', '')));
-
   if (phones.isEmpty) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('لا توجد أرقام متاحة')));
+    showAppSnack(context, 'لا توجد أرقام متاحة', type: AppSnackType.error);
     return;
   }
-  if (phones.length == 1) {
-    await dial(phones.first);
-    return;
-  }
-  await showModalBottomSheet<void>(
+  await showAppSheet<void>(
     context: context,
-    showDragHandle: true,
-    builder: (sheetContext) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(bottom: 8),
-            child: Text(
-              'اختر رقم للاتصال',
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-          for (final phone in phones)
-            ListTile(
-              leading: Icon(Icons.call_rounded, color: context.palette.success),
-              title: Text(phone, textDirection: TextDirection.ltr),
-              onTap: () {
-                Navigator.of(sheetContext).pop();
-                dial(phone);
-              },
-            ),
-          const SizedBox(height: AppSpacing.sm),
+    title: 'اتصل بنا',
+    subtitle: phones.length > 1 ? 'اختار الرقم اللي يناسبك' : null,
+    icon: Icons.phone_in_talk_rounded,
+    builder: (_) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final phone in phones) ...[
+          AppSheetCard(child: PhoneActions(phone: phone)),
+          const SizedBox(height: AppSpacing.md),
         ],
-      ),
+      ],
     ),
   );
 }

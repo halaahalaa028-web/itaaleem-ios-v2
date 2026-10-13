@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/widgets/app_shimmer.dart';
@@ -56,36 +58,51 @@ class _AllReviewsScreenState extends ConsumerState<AllReviewsScreen> {
                 ref.invalidate(reviewsControllerProvider(widget.centerId)),
           ),
           data: (state) {
-            if (state.items.isEmpty) {
-              return const Center(child: Text('لا توجد تقييمات بعد'));
-            }
             return RefreshIndicator(
               onRefresh: () async => ref.refresh(
                 reviewsControllerProvider(widget.centerId).future,
               ),
-              child: ListView.separated(
-                controller: _scroll,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                itemCount: state.items.length + (state.hasMore ? 1 : 0),
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: AppSpacing.listItemSpacing),
-                itemBuilder: (context, i) {
-                  if (i >= state.items.length) {
-                    return const AppShimmer(child: ShimmerCard());
-                  }
-                  final r = state.items[i];
-                  return KeyedSubtree(
-                    key: ValueKey(r.id),
-                    child: ReviewCard(
-                      review: r,
-                      trailing: r.isOwner
-                          ? OwnReviewMenu(centerId: widget.centerId, review: r)
-                          : null,
+              child: state.items.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 160),
+                        Center(child: Text('لا توجد تقييمات بعد')),
+                      ],
+                    )
+                  : ListView.separated(
+                      controller: _scroll,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      // iPad: a centered 720-wide column.
+                      padding: EdgeInsets.symmetric(
+                        vertical: AppSpacing.lg,
+                        horizontal: math.max(
+                          AppSpacing.lg,
+                          (MediaQuery.sizeOf(context).width - 720) / 2,
+                        ),
+                      ),
+                      itemCount: state.items.length + (state.hasMore ? 1 : 0),
+                      separatorBuilder: (_, _) =>
+                          const SizedBox(height: AppSpacing.listItemSpacing),
+                      itemBuilder: (context, i) {
+                        if (i >= state.items.length) {
+                          return const AppShimmer(child: ShimmerCard());
+                        }
+                        final r = state.items[i];
+                        return KeyedSubtree(
+                          key: ValueKey(r.id),
+                          child: ReviewCard(
+                            review: r,
+                            trailing: r.isOwner
+                                ? OwnReviewMenu(
+                                    centerId: widget.centerId,
+                                    review: r,
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
                     ),
-                  );
-                },
-              ),
             );
           },
         ),

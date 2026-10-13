@@ -16,9 +16,16 @@ class AppSettingsModel extends AppSettings {
     super.maintenanceMessage,
     super.aiEnabled,
     super.sequentialMode,
+    super.rateAppEnabled,
+    super.rateAppUrl,
   });
 
-  factory AppSettingsModel.fromJson(Map<String, dynamic> json) {
+  factory AppSettingsModel.fromJson(
+    Map<String, dynamic> json, {
+    Object? rateApp,
+  }) {
+    final rate = rateApp is Map ? rateApp : json['rate_app'];
+    final rateUrl = rate is Map ? _asNonEmpty(rate['url']) : null;
     return AppSettingsModel(
       appName: _asNonEmpty(json['app_name']),
       whatsappGroup: _asNonEmpty(json['whatsapp_group']),
@@ -34,6 +41,12 @@ class AppSettingsModel extends AppSettings {
       maintenanceMessage: _asNonEmpty(json['maintenance_message']),
       aiEnabled: json['ai_enabled'] == true,
       sequentialMode: json['sequential_mode'] == true,
+      rateAppEnabled: rate is Map && rate['enabled'] == true,
+      rateAppUrl:
+          rateUrl != null &&
+              (rateUrl.startsWith('https://') || rateUrl.startsWith('http://'))
+          ? rateUrl
+          : null,
     );
   }
 

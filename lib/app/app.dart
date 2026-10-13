@@ -1,3 +1,4 @@
+import 'package:itaaleem/core/widgets/app_toast.dart';
 import 'package:itaaleem/app/router/app_router.dart';
 import 'package:itaaleem/core/theme/dynamic_theme.dart';
 import 'package:itaaleem/features/center/presentation/providers/branding_provider.dart';
@@ -20,6 +21,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 /// Guards [App]'s device-lock listener against stacking dialogs.
+bool _sessionEndedShowing = false;
 bool _deviceLockShowing = false;
 
 class App extends ConsumerWidget {
@@ -65,10 +67,20 @@ class App extends ConsumerWidget {
     // established session's token was rejected mid-use — force the student
     // back to `/login` rather than leaving every screen stuck on a
     // "غير مصرح" error forever.
-    ref.listen(unauthorizedStreamProvider, (previous, next) {
-      if (next.hasValue) {
-        ref.read(authControllerProvider.notifier).forceLogout();
+    ref.listen(unauthorizedStreamProvider, (previous, next) async {
+      if (!next.hasValue) return;
+      // Several in-flight requests may 401 at once — only the first counts.
+      final wasLoggedIn = ref.read(authControllerProvider).valueOrNull != null;
+      await ref.read(authControllerProvider.notifier).forceLogout();
+      if (!wasLoggedIn || _sessionEndedShowing) return;
+      _sessionEndedShowing = true;
+      // Let the redirect to /login settle, then say why.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      final context = rootNavigatorKey.currentContext;
+      if (context != null && context.mounted) {
+        AppToast.showError(context, 'انتهت الجلسة، سجّل الدخول مرة أخرى');
       }
+      _sessionEndedShowing = false;
     });
 
     // This device was removed from the account (e.g. the center admin reset

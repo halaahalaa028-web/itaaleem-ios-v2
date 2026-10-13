@@ -1,3 +1,4 @@
+import 'package:itaaleem/core/widgets/app_sheet.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
 import 'package:itaaleem/features/subjects/data/datasources/subjects_remote_data_source.dart';
@@ -73,7 +74,8 @@ class _PaidContentSheetState extends ConsumerState<_PaidContentSheet> {
   bool _submitting = false;
 
   Future<void> _submit() async {
-    final messenger = ScaffoldMessenger.of(context);
+    // Survives this sheet being disposed.
+    final toastContext = Navigator.of(context, rootNavigator: true).context;
     final navigator = Navigator.of(context);
     setState(() => _submitting = true);
     try {
@@ -89,22 +91,22 @@ class _PaidContentSheetState extends ConsumerState<_PaidContentSheet> {
       // already dismissed it (or the sheet was disposed), a blind pop would
       // remove the lesson screen underneath and leave a black screen.
       if (mounted && navigator.canPop()) navigator.pop(true);
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'تم إرسال طلبك بنجاح. سيتم إشعارك عند التفعيل',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+      if (toastContext.mounted) {
+        showAppSnack(
+          toastContext,
+          'تم إرسال طلبك بنجاح. سيتم إشعارك عند التفعيل',
+        );
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(failureOf(error).message, textAlign: TextAlign.center),
-        ),
-      );
+      if (toastContext.mounted) {
+        showAppSnack(
+          toastContext,
+          failureOf(error).message,
+          type: AppSnackType.error,
+        );
+      }
     }
   }
 

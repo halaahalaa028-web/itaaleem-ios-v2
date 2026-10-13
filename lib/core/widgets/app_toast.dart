@@ -5,7 +5,7 @@ import 'package:itaaleem/core/theme/app_palette.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
 import 'package:itaaleem/core/theme/app_spacing.dart';
 
-enum _ToastKind { success, error }
+enum _ToastKind { success, error, info }
 
 /// Top-anchored success/error toast, replacing the default bottom
 /// [SnackBar] everywhere in the app — inserted directly into the root
@@ -35,6 +35,10 @@ class AppToast {
 
   static void showError(BuildContext context, String message) {
     _show(context, message, kind: _ToastKind.error);
+  }
+
+  static void showInfo(BuildContext context, String message) {
+    _show(context, message, kind: _ToastKind.info);
   }
 
   static void _show(
@@ -131,6 +135,7 @@ class _ToastCardState extends State<_ToastCard>
     final (Color accent, IconData icon) = switch (widget.kind) {
       _ToastKind.success => (palette.success, Icons.check_rounded),
       _ToastKind.error => (scheme.error, Icons.priority_high_rounded),
+      _ToastKind.info => (scheme.primary, Icons.info_outline_rounded),
     };
     // Opaque tint: the toast floats over arbitrary content.
     final background = Color.alphaBlend(

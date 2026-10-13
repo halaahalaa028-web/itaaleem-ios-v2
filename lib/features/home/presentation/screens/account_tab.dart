@@ -1,16 +1,21 @@
+import 'package:itaaleem/features/certificates/certificates.dart';
 import 'dart:math' as math;
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:itaaleem/core/network/api_endpoints.dart';
 import 'package:itaaleem/core/providers/package_info_provider.dart';
+import 'package:itaaleem/features/center/data/models/center_json_mapper.dart';
+import 'package:itaaleem/features/settings/presentation/rate_app.dart';
 import 'package:itaaleem/core/widgets/app_button.dart';
 import 'package:itaaleem/core/widgets/app_toast.dart';
 import 'package:itaaleem/core/widgets/auth_shell.dart';
 import 'package:itaaleem/core/widgets/student_avatar.dart';
 import 'package:itaaleem/app/router/app_router.dart';
-import 'package:itaaleem/features/account/presentation/widgets/quick_link_card.dart';
 import 'package:itaaleem/features/activation/presentation/screens/activation_screen.dart';
 import 'package:itaaleem/features/auth/domain/entities/student.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
 import 'package:itaaleem/features/auth/presentation/screens/edit_profile_screen.dart';
+import 'package:itaaleem/features/auth/presentation/widgets/logout_confirm.dart';
 import 'package:itaaleem/features/auth/presentation/widgets/pick_profile_image.dart';
 import 'package:itaaleem/features/center/domain/entities/center_model.dart';
 import 'package:itaaleem/features/center/presentation/providers/center_providers.dart';
@@ -53,6 +58,17 @@ class AccountTab extends ConsumerWidget {
     final version =
         ref.watch(packageInfoProvider).valueOrNull?.version ?? '1.0.0';
 
+    final links = center != null && center.socialLinks.isNotEmpty
+        ? center.socialLinks
+        : socialLinksFromJson(student?.centerJson?['social_links']);
+    final centerName =
+        center?.name ?? student?.centerJson?['name']?.toString().trim();
+    final centerLogo =
+        center?.logo ?? ApiEndpoints.mediaUrl(student?.centerLogo);
+    final rateUrl = ref.watch(rateAppUrlProvider);
+    final hasCertificates =
+        ref.watch(certificatesProvider).valueOrNull?.isNotEmpty ?? false;
+
     // The header paints under the status bar, so its icons need to be light.
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -63,156 +79,158 @@ class AccountTab extends ConsumerWidget {
           children: [
             _Header(
               student: student,
-              centerName: center?.name,
+              centerName: (centerName?.isEmpty ?? true) ? null : centerName,
+              centerLogo: centerLogo,
               gradeName: gradeName,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.screenHorizontal,
-                AppSpacing.sectionSpacing,
-                AppSpacing.screenHorizontal,
-                AppSpacing.sectionSpacing,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const _SectionLabel('روابطك السريعة'),
-                  const SizedBox(height: AppSpacing.md),
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.5,
-                    children: [
-                      QuickLinkCard(
-                        icon: Icons.support_agent_rounded,
-                        label: 'الدعم',
-                        color: context.palette.success,
-                        onTap: () => context.push<void>(supportPath),
-                      ),
-                      QuickLinkCard(
-                        icon: Icons.download_for_offline_rounded,
-                        label: 'المحمّلات',
-                        color: Theme.of(context).colorScheme.secondary,
-                        // A real GoRouter navigation (not Navigator.push) —
-                        // `/downloads` is one of the paths the app's
-                        // connectivity gate keeps reachable while offline,
-                        // which it only recognizes by the router's own
-                        // location.
-                        onTap: () => context.push(downloadsPath),
-                      ),
-                    ],
+            Center(
+              child: ConstrainedBox(
+                // iPad: one readable column in the middle.
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.screenHorizontal,
+                    AppSpacing.sectionSpacing,
+                    AppSpacing.screenHorizontal,
+                    AppSpacing.sectionSpacing,
                   ),
-                  const SizedBox(height: AppSpacing.xl),
-                  const _SectionLabel('الحساب'),
-                  const SizedBox(height: 10),
-                  _MenuCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _MenuTile(
-                        icon: Icons.person_outline_rounded,
-                        label: 'تعديل البيانات',
-                        onTap: () => context.push<void>(editProfilePath),
-                      ),
-                      _MenuTile(
-                        icon: Icons.lock_reset_rounded,
-                        label: 'تغيير كلمة المرور',
-                        onTap: () => context.push<void>(changePasswordPath),
-                      ),
-                      if (!PlatformUtils.hideSubscriptions)
-                        _MenuTile(
-                          icon: Icons.card_membership_rounded,
-                          label: 'اشتراكاتي',
-                          onTap: () => context.push<void>(mySubscriptionsPath),
-                        ),
-                      // An activated student can still redeem a code for
-                      // more subjects — except on iOS, where unlocking
-                      // content outside In-App Purchase isn't allowed.
-                      if (!PlatformUtils.hideSubscriptions)
-                        const _MenuTile(
-                          icon: Icons.confirmation_number_rounded,
-                          label: 'تفعيل كود الاشتراك',
-                          onTap: pushActivationScreen,
-                        ),
-                    ],
-                  ),
-                  if (center != null && membership != null) ...[
-                    const SizedBox(height: AppSpacing.lg),
-                    const _SectionLabel('السنتر'),
-                    const SizedBox(height: 10),
-                    _MenuCard(
-                      children: [
-                        _MenuTile(
-                          icon: Icons.school_rounded,
-                          label: 'بيانات السنتر',
-                          onTap: () => context.push<void>(contactCenterPath),
-                        ),
-                        _MenuTile(
-                          icon: Icons.groups_rounded,
-                          label: 'تغيير الكورس',
-                          onTap: () =>
-                              context.push<void>('/select-grade/${center.id}'),
-                        ),
-                        _MenuTile(
-                          icon: Icons.logout_rounded,
-                          label: 'مغادرة السنتر',
-                          destructive: true,
-                          onTap: () =>
-                              confirmLeaveCenter(context, ref, center.name),
-                        ),
-                      ],
-                    ),
-                    if (center.socialLinks.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.base),
-                      GlassCard(
-                        padding: const EdgeInsets.all(AppSpacing.base),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              'تابع السنتر',
-                              style: Theme.of(context).textTheme.labelLarge
-                                  ?.copyWith(
-                                    color: context.palette.textSecondary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                      const _SectionLabel('حسابي'),
+                      _MenuCard(
+                        children: [
+                          _MenuTile(
+                            icon: Icons.person_outline_rounded,
+                            label: 'تعديل البيانات',
+                            onTap: () => context.push<void>(editProfilePath),
+                          ),
+                          _MenuTile(
+                            icon: Icons.lock_outline_rounded,
+                            label: 'تغيير كلمة السر',
+                            onTap: () => context.push<void>(changePasswordPath),
+                          ),
+                          if (!PlatformUtils.hideSubscriptions)
+                            _MenuTile(
+                              icon: Icons.card_membership_outlined,
+                              label: 'اشتراكاتي',
+                              onTap: () =>
+                                  context.push<void>(mySubscriptionsPath),
                             ),
-                            const SizedBox(height: AppSpacing.sm),
-                            SocialLinksBar(socialLinks: center.socialLinks),
+                          // An activated student can still redeem a code
+                          // for more subjects — except on iOS, where
+                          // unlocking content outside In-App Purchase isn't
+                          // allowed.
+                          if (!PlatformUtils.hideSubscriptions)
+                            const _MenuTile(
+                              icon: Icons.confirmation_number_outlined,
+                              label: 'تفعيل كود الاشتراك',
+                              onTap: pushActivationScreen,
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      const _SectionLabel('محتوايا'),
+                      _MenuCard(
+                        children: [
+                          // Hidden until the student has at least one.
+                          if (hasCertificates)
+                            _MenuTile(
+                              icon: Icons.workspace_premium_outlined,
+                              label: 'شهاداتي',
+                              onTap: () => showCertificatesSheet(context, ref),
+                            ),
+                          _MenuTile(
+                            icon: Icons.download_outlined,
+                            label: 'التحميلات',
+                            // A real GoRouter navigation — `/downloads` is
+                            // one of the paths the connectivity gate keeps
+                            // reachable offline, recognized by location.
+                            onTap: () => context.push(downloadsPath),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      const _SectionLabel('السنتر'),
+                      _MenuCard(
+                        children: [
+                          if (center != null && membership != null)
+                            _MenuTile(
+                              icon: Icons.support_agent_outlined,
+                              label: 'تواصل مع السنتر',
+                              onTap: () =>
+                                  context.push<void>(contactCenterPath),
+                            ),
+                          _MenuTile(
+                            icon: Icons.help_outline_rounded,
+                            label: 'الدعم',
+                            onTap: () => context.push<void>(supportPath),
+                          ),
+                          if (center != null && membership != null) ...[
+                            _MenuTile(
+                              icon: Icons.groups_outlined,
+                              label: 'تغيير الكورس',
+                              onTap: () => context.push<void>(
+                                '/select-grade/${center.id}',
+                              ),
+                            ),
+                            _MenuTile(
+                              icon: Icons.logout_rounded,
+                              label: 'مغادرة السنتر',
+                              destructive: true,
+                              onTap: () =>
+                                  confirmLeaveCenter(context, ref, center.name),
+                            ),
                           ],
+                          if (hasUsableSocialLinks(links))
+                            Padding(
+                              padding: const EdgeInsets.all(AppSpacing.base),
+                              child: SocialLinksBar(socialLinks: links),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      const _SectionLabel('التطبيق'),
+                      _MenuCard(
+                        children: [
+                          const _DarkModeTile(),
+                          if (rateUrl != null)
+                            _MenuTile(
+                              icon: Icons.star_outline_rounded,
+                              label: 'قيّم التطبيق ⭐',
+                              onTap: () => openRateApp(context, rateUrl),
+                            ),
+                          _MenuTile(
+                            icon: Icons.privacy_tip_outlined,
+                            label: 'سياسة الخصوصية',
+                            onTap: () => openRateApp(context, _privacyUrl),
+                          ),
+                          _MenuTile(
+                            icon: Icons.info_outline_rounded,
+                            label: 'عن التطبيق',
+                            onTap: () => context.push<void>(aboutPath),
+                          ),
+                          const _DeleteAccountTile(),
+                        ],
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      const _LogoutButton(),
+                      const SizedBox(height: AppSpacing.md),
+                      Center(
+                        child: Text(
+                          'منصة أونلاين v$version',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontSize: 11,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                       ),
                     ],
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
-                  const _SectionLabel('التطبيق'),
-                  const SizedBox(height: 10),
-                  _MenuCard(
-                    children: [
-                      const _DarkModeTile(),
-                      _MenuTile(
-                        icon: Icons.info_outline_rounded,
-                        label: 'عن التطبيق',
-                        onTap: () => context.push<void>(aboutPath),
-                      ),
-                      const _DeleteAccountTile(),
-                    ],
                   ),
-                  const SizedBox(height: AppSpacing.lg),
-                  const _LogoutButton(),
-                  const SizedBox(height: AppSpacing.sm),
-                  Center(
-                    child: Text(
-                      'منصة أونلاين v$version',
-                      style: TextStyle(
-                        fontFamily: 'Cairo',
-                        fontSize: 11,
-                        color: context.palette.textTertiary,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -222,11 +240,19 @@ class AccountTab extends ConsumerWidget {
   }
 }
 
+const _privacyUrl = 'https://api.itaaleem.com/privacy';
+
 class _Header extends StatelessWidget {
-  const _Header({required this.student, this.centerName, this.gradeName});
+  const _Header({
+    required this.student,
+    this.centerName,
+    this.centerLogo,
+    this.gradeName,
+  });
 
   final Student? student;
   final String? centerName;
+  final String? centerLogo;
   final String? gradeName;
 
   /// Outer radius of the avatar ring — half of it sits in the gradient.
@@ -367,11 +393,10 @@ class _Header extends StatelessWidget {
               ],
               if (centerName != null) ...[
                 const SizedBox(height: 10),
-                StatusPill(
-                  icon: Icons.school_rounded,
-                  label: gradeName != null
-                      ? 'منضم لـ $centerName — $gradeName'
-                      : 'منضم لـ $centerName',
+                _CenterChip(
+                  name: centerName!,
+                  logo: centerLogo,
+                  gradeName: gradeName,
                 ),
               ],
             ],
@@ -389,7 +414,20 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SectionTitle(title: label, padding: EdgeInsets.zero);
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(
+        start: AppSpacing.xs,
+        bottom: AppSpacing.sm,
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: scheme.onSurfaceVariant,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
   }
 }
 
@@ -414,7 +452,11 @@ class _MenuCard extends StatelessWidget {
           for (var i = 0; i < children.length; i++) ...[
             children[i],
             if (i != children.length - 1)
-              Divider(height: 1, color: context.palette.borderLight),
+              Divider(
+                height: 1,
+                indent: 56,
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              ),
           ],
         ],
       ),
@@ -439,32 +481,27 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = destructive ? context.palette.error : context.palette.primary;
+    final scheme = Theme.of(context).colorScheme;
     return ListTile(
       onTap: onTap,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: AlignmentDirectional.topStart,
-            end: AlignmentDirectional.bottomEnd,
-            colors: [
-              color.withValues(alpha: 0.18),
-              color.withValues(alpha: 0.06),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, size: 20, color: color),
+      contentPadding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: 2,
+      ),
+      leading: Icon(
+        icon,
+        size: 22,
+        color: destructive ? scheme.error : scheme.primary,
       ),
       title: Text(
         label,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(color: color),
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          color: destructive ? scheme.error : scheme.onSurface,
+        ),
       ),
       trailing:
           trailing ??
-          Icon(Icons.chevron_left_rounded, color: context.palette.textTertiary),
+          Icon(Icons.chevron_left_rounded, color: scheme.onSurfaceVariant),
     );
   }
 }
@@ -482,18 +519,14 @@ class _DarkModeTile extends ConsumerWidget {
         : themeMode == ThemeMode.dark;
 
     return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: context.palette.primary.withValues(alpha: 0.08),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(
-          Icons.dark_mode_rounded,
-          size: 20,
-          color: context.palette.primary,
-        ),
+      contentPadding: const EdgeInsetsDirectional.symmetric(
+        horizontal: AppSpacing.base,
+        vertical: 2,
+      ),
+      leading: Icon(
+        Icons.dark_mode_outlined,
+        size: 22,
+        color: Theme.of(context).colorScheme.primary,
       ),
       title: const Text(
         'الوضع الليلي',
@@ -567,6 +600,9 @@ class _ProfileAvatarState extends ConsumerState<_ProfileAvatar> {
       avatarUrl: widget.student?.avatarUrl,
       isLoading: _uploading,
       showCameraBadge: true,
+      initial: (widget.student?.fullName.trim().isNotEmpty ?? false)
+          ? widget.student!.fullName.trim().characters.first
+          : null,
       onTap: _uploading ? null : () => _viewFullscreen(context),
       onCameraTap: _uploading ? null : _changePhoto,
     );
@@ -659,9 +695,61 @@ class _LogoutButton extends ConsumerWidget {
       icon: Icons.logout_rounded,
       color: context.palette.error,
       loading: isLoggingOut,
-      onPressed: isLoggingOut
-          ? null
-          : () => ref.read(authControllerProvider.notifier).logout(),
+      onPressed: isLoggingOut ? null : () => confirmAndLogout(context, ref),
+    );
+  }
+}
+
+/// The joined center's small logo + name (and grade) under the student.
+class _CenterChip extends StatelessWidget {
+  const _CenterChip({required this.name, this.logo, this.gradeName});
+
+  final String name;
+  final String? logo;
+  final String? gradeName;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final logo = this.logo;
+    return Container(
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 4, 12, 4),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: scheme.primary,
+            foregroundImage: logo != null && logo.isNotEmpty
+                ? CachedNetworkImageProvider(logo)
+                : null,
+            child: Text(
+              name.characters.first,
+              style: TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: scheme.onPrimary,
+              ),
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Flexible(
+            child: Text(
+              gradeName != null ? '$name — $gradeName' : name,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: scheme.onPrimaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

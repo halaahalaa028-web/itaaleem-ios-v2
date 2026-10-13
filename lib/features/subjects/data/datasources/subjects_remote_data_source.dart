@@ -63,8 +63,25 @@ class SubjectsRemoteDataSource {
     }
     final envelope = response.data?['data'] ?? response.data?['subject'];
     final body = envelope is Map<String, dynamic>
-        ? envelope
-        : (response.data ?? const <String, dynamic>{});
+        ? {...envelope}
+        : {...?response.data};
+    // `access_card` may sit beside `data`/`subject` instead of inside it.
+    if (body['access_card'] is! Map) {
+      final data = response.data?['data'];
+      final card = [
+        response.data?['access_card'],
+        if (data is Map) data['access_card'],
+        if (data is Map && data['subject'] is Map)
+          (data['subject'] as Map)['access_card'],
+      ].firstWhere((e) => e is Map, orElse: () => null);
+      if (card != null) body['access_card'] = card;
+    }
+    if (kDebugMode) {
+      debugPrint(
+        '[access_card] GET ${ApiEndpoints.subjectDetails(id)} top-level keys: '
+        '${response.data?.keys.toList()} · subject keys: ${body.keys.toList()}',
+      );
+    }
     await SubjectsCache.save('subject_$id', body);
     return subjectFromJson(body);
   }

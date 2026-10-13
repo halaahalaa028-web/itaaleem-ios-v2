@@ -22,3 +22,7 @@ const centerAdminStatsPath = '$centerAdminPath/stats';
 const centerAdminRequestsPath = '$centerAdminPath/requests';
 String centerAdminRequestPath(int id) => '$centerAdminRequestsPath/$id';
 const centerAdminActivationCodesPath = '$centerAdminPath/activation-codes';
+
+/// The admin's own notifications (`GET /center-admin/inbox`) — not
+/// [centerAdminNotificationsPath], which sends notifications to students.
+const centerAdminInboxPath = '$centerAdminPath/inbox';

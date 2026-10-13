@@ -1,3 +1,5 @@
+import 'package:itaaleem/core/widgets/app_empty_state.dart';
+import 'package:itaaleem/core/widgets/locked_content_view.dart';
 import 'package:itaaleem/core/widgets/status_badge.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -278,31 +280,45 @@ class _RealExamsList extends ConsumerWidget {
             ? ref.invalidate(examsListProvider)
             : ref.invalidate(subjectExamsProvider(id)),
       ),
-      data: (exams) => exams.isEmpty
-          ? Center(
-              child: Text(
-                'مفيش امتحانات متاحة حالياً',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: context.palette.textSecondary,
-                ),
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              itemCount: exams.length,
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: AppSpacing.listItemSpacing),
-              itemBuilder: (context, index) => KeyedSubtree(
-                key: ValueKey(exams[index].id),
-                child: FadeSlideIn.staggered(
-                  index: index,
-                  child: _RealExamCard(
-                    exam: exams[index],
-                    onStart: () => _startRealExam(context, exams[index].id),
+      data: (exams) => RefreshIndicator(
+        onRefresh: () async {
+          if (id == null) {
+            ref.invalidate(examsListProvider);
+            await ref.read(examsListProvider.future);
+          } else {
+            ref.invalidate(subjectExamsProvider(id));
+            await ref.read(subjectExamsProvider(id).future);
+          }
+        },
+        child: exams.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: AppSpacing.xxxl),
+                  AppEmptyState(
+                    icon: Icons.quiz_outlined,
+                    title: 'مفيش امتحانات متاحة حالياً',
+                  ),
+                ],
+              )
+            : ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                itemCount: exams.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AppSpacing.listItemSpacing),
+                itemBuilder: (context, index) => KeyedSubtree(
+                  key: ValueKey(exams[index].id),
+                  child: FadeSlideIn.staggered(
+                    index: index,
+                    child: _RealExamCard(
+                      exam: exams[index],
+                      onStart: () => _startRealExam(context, exams[index].id),
+                    ),
                   ),
                 ),
               ),
-            ),
+      ),
     );
   }
 }
@@ -395,14 +411,16 @@ class _RealExamCard extends ConsumerWidget {
                   ),
                   const SizedBox(width: AppSpacing.xs),
                 ],
-                if (exam.isLocked)
+                if (exam.isLocked) ...[
                   Text(
                     'مقفول 🔒',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       color: context.palette.textTertiary,
                     ),
-                  )
-                else
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  const ActivateWithCodeButton(dense: true),
+                ] else
                   AppButton.primary(
                     best == null ? 'ابدأ الامتحان' : 'إعادة المحاولة',
                     expand: false,

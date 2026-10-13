@@ -61,6 +61,41 @@ final centerSubjectsListProvider =
       ),
     );
 
+/// `GET courses` — cached 2 minutes. Empty when the server has none (or
+/// lacks the route), so pickers simply hide.
+final centerCoursesProvider = FutureProvider.autoDispose<List<AdminRecord>>(
+  (ref) => ref.cached(() async {
+    try {
+      return await ref.read(centerAdminRepositoryProvider).courses();
+    } catch (_) {
+      return const <AdminRecord>[];
+    }
+  }, duration: const Duration(minutes: 2)),
+);
+
+/// `GET courses/{id}/subjects`.
+final centerCourseSubjectsProvider = FutureProvider.autoDispose
+    .family<List<AdminRecord>, int>(
+      (ref, id) => ref.cached(
+        () => ref.read(centerAdminRepositoryProvider).courseSubjects(id),
+        duration: const Duration(minutes: 2),
+      ),
+    );
+
+/// `GET inbox/unread-count` — the bell badge. 0 on failure.
+final centerInboxUnreadProvider = FutureProvider.autoDispose<int>((ref) async {
+  try {
+    return await ref.read(centerAdminRepositoryProvider).inboxUnreadCount();
+  } catch (_) {
+    return 0;
+  }
+});
+
+/// `GET settings` as raw JSON.
+final centerSettingsProvider = FutureProvider.autoDispose<Map<String, dynamic>>(
+  (ref) => ref.read(centerAdminRepositoryProvider).settings(),
+);
+
 /// What an admin list shows: a section [path] plus its filters. A record,
 /// so equal queries share one provider instance.
 typedef AdminListQuery = ({String path, String search, String filters});
@@ -181,6 +216,7 @@ void invalidateAdminSection(WidgetRef ref, String path) {
   ref.invalidate(centerLecturesBySubjectProvider);
   ref.invalidate(centerActivationCodesProvider);
   ref.invalidate(centerStudentSubscriptionsProvider);
+  ref.invalidate(centerInboxUnreadProvider);
 }
 
 /// [invalidateAdminSection] from a captured container — safe after the
@@ -193,4 +229,5 @@ void invalidateAdminContainer(ProviderContainer c) {
   c.invalidate(centerLecturesBySubjectProvider);
   c.invalidate(centerActivationCodesProvider);
   c.invalidate(centerStudentSubscriptionsProvider);
+  c.invalidate(centerInboxUnreadProvider);
 }

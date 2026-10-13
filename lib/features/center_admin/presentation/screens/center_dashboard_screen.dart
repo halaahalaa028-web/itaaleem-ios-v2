@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,38 +18,168 @@ import 'package:itaaleem/features/center_admin/presentation/widgets/admin_menu_i
 import 'package:itaaleem/features/center_admin/presentation/widgets/admin_stat_card.dart';
 import 'package:itaaleem/features/center_admin/providers/center_admin_providers.dart';
 
-/// Home of the center-admin dashboard: center header, pending subscription
-/// requests (badge + "طلبات جديدة"), 8 counters, the latest subscriptions
-/// and students, and a grid into every section.
+/// Home of the center-admin dashboard: center header, quick actions,
+/// pending subscription requests (badge + "طلبات جديدة"), 8 counters, every
+/// section grouped like the web panel, and the latest subscriptions and
+/// students. The AppBar bell opens the admin's own inbox (unread badge,
+/// refreshed on open and every 2 minutes while the dashboard is up).
 /// Everything comes from `GET /center-admin/dashboard`, already scoped to
 /// this admin's center by the server.
-class CenterDashboardScreen extends ConsumerWidget {
+class CenterDashboardScreen extends ConsumerStatefulWidget {
   const CenterDashboardScreen({super.key});
 
-  static const _sections = <(IconData, String, String)>[
-    (Icons.people_alt_rounded, 'الطلاب', centerAdminStudentsPath),
-    (Icons.menu_book_rounded, 'المواد', centerAdminSubjectsPath),
-    (Icons.school_rounded, 'الدكاترة', centerAdminTeachersPath),
-    (Icons.play_circle_rounded, 'المحاضرات', centerAdminLecturesPath),
-    (Icons.quiz_rounded, 'الامتحانات', centerAdminExamsPath),
-    (Icons.card_membership_rounded, 'الاشتراكات', centerAdminSubscriptionsPath),
-    (Icons.vpn_key_rounded, 'أكواد التفعيل', centerAdminActivationCodesPath),
+  /// The web panel's groups: (title, [(icon, label, path)]).
+  static const _groups = <(String, List<(IconData, String, String)>)>[
     (
-      Icons.notifications_active_rounded,
-      'الإشعارات',
-      centerAdminNotificationsPath,
+      'الرئيسية',
+      [(Icons.insights_rounded, 'الإحصائيات', centerAdminStatsPath)],
     ),
-    (Icons.view_carousel_rounded, 'البنرات', centerAdminBannersPath),
-    (Icons.folder_rounded, 'الملفات', centerAdminFilesPath),
-    (Icons.insights_rounded, 'الإحصائيات', centerAdminStatsPath),
-    (Icons.settings_rounded, 'الإعدادات', centerAdminSettingsPath),
+    (
+      'المحتوى',
+      [
+        (Icons.menu_book_rounded, 'المواد', centerAdminSubjectsPath),
+        (Icons.school_rounded, 'الدكاترة', centerAdminTeachersPath),
+        (Icons.play_circle_rounded, 'المحاضرات', centerAdminLecturesPath),
+        (Icons.quiz_rounded, 'الامتحانات', centerAdminExamsPath),
+        (Icons.folder_rounded, 'الملفات', centerAdminFilesPath),
+        (Icons.view_carousel_rounded, 'البنرات', centerAdminBannersPath),
+      ],
+    ),
+    (
+      'الطلاب والاشتراكات',
+      [
+        (Icons.people_alt_rounded, 'الطلاب', centerAdminStudentsPath),
+        (
+          Icons.card_membership_rounded,
+          'الاشتراكات',
+          centerAdminSubscriptionsPath,
+        ),
+      ],
+    ),
+    (
+      'الأكواد',
+      [
+        (
+          Icons.vpn_key_rounded,
+          'أكواد التفعيل',
+          centerAdminActivationCodesPath,
+        ),
+      ],
+    ),
+    (
+      'التواصل',
+      [
+        (Icons.inbox_rounded, 'صندوق الإشعارات', centerAdminInboxPath),
+        (
+          Icons.campaign_rounded,
+          'إشعارات الطلاب',
+          centerAdminNotificationsPath,
+        ),
+      ],
+    ),
+    (
+      'الإعدادات',
+      [(Icons.settings_rounded, 'الإعدادات', centerAdminSettingsPath)],
+    ),
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CenterDashboardScreen> createState() =>
+      _CenterDashboardScreenState();
+}
+
+class _CenterDashboardScreenState extends ConsumerState<CenterDashboardScreen> {
+  Timer? _poll;
+
+  @override
+  void initState() {
+    super.initState();
+    // A fresh count on open, then every 2 minutes while the dashboard is up.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.invalidate(centerInboxUnreadProvider);
+    });
+    _poll = Timer.periodic(const Duration(minutes: 2), (_) {
+      if (mounted) ref.invalidate(centerInboxUnreadProvider);
+    });
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _openInbox() async {
+    await context.push(centerAdminInboxPath);
+    if (mounted) ref.invalidate(centerInboxUnreadProvider);
+  }
+
+  /// "إضافة طالب": name, phone, password → `POST students`.
+  Future<void> _addStudent() async {
+    final values = await showAdminForm(
+      context,
+      title: 'إضافة طالب',
+      submitLabel: 'إضافة',
+      fields: const [
+        AdminField(
+          'name',
+          'اسم الطالب',
+          icon: Icons.person_rounded,
+          required: true,
+        ),
+        AdminField(
+          'phone',
+          'رقم الموبايل',
+          icon: Icons.phone_rounded,
+          keyboard: TextInputType.phone,
+          required: true,
+        ),
+        AdminField(
+          'password',
+          'كلمة المرور',
+          icon: Icons.lock_rounded,
+          required: true,
+        ),
+      ],
+    );
+    if (values == null || !mounted) return;
+    await runAdminAction(context, ref, () async {
+      try {
+        await ref
+            .read(centerAdminRepositoryProvider)
+            .create('students', values);
+      } on ServerFailure catch (e) {
+        // The endpoint isn't on every server yet.
+        if (e.statusCode == 404 || e.statusCode == 405) {
+          throw const ServerFailure('هذه الميزة غير متاحة حالياً');
+        }
+        rethrow;
+      }
+    }, success: 'تم إضافة الطالب');
+  }
+
+  Widget _menuItem(IconData icon, String label, String path, {int badge = 0}) {
+    final item = AdminMenuItem(
+      icon: icon,
+      label: label,
+      onTap: path == centerAdminInboxPath
+          ? _openInbox
+          : () => context.push(path),
+    );
+    if (badge <= 0) return item;
+    return Badge(
+      label: Text(badge > 99 ? '99+' : '$badge'),
+      offset: const Offset(-6, 6),
+      child: item,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(centerDashboardProvider);
     final pendingAsync = ref.watch(centerPendingRequestsProvider);
     final pendingCount = pendingAsync.valueOrNull?.total ?? 0;
+    final unread = ref.watch(centerInboxUnreadProvider).valueOrNull ?? 0;
     final profileCenter = ref.watch(
       authControllerProvider.select((s) => s.valueOrNull?.centerJson),
     );
@@ -73,6 +205,15 @@ class CenterDashboardScreen extends ConsumerWidget {
             icon: Badge(
               isLabelVisible: pendingCount > 0,
               label: Text('$pendingCount'),
+              child: const Icon(Icons.mark_email_unread_rounded),
+            ),
+          ),
+          IconButton(
+            tooltip: 'الإشعارات',
+            onPressed: _openInbox,
+            icon: Badge(
+              isLabelVisible: unread > 0,
+              label: Text(unread > 99 ? '99+' : '$unread'),
               child: const Icon(Icons.notifications_rounded),
             ),
           ),
@@ -82,6 +223,7 @@ class CenterDashboardScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(centerPendingRequestsProvider);
           ref.invalidate(centerDashboardProvider);
+          ref.invalidate(centerInboxUnreadProvider);
           // Errors are shown by the page itself; just end the spinner.
           await ref
               .read(centerDashboardProvider.future)
@@ -95,6 +237,14 @@ class CenterDashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
                 _CenterHeader(name: centerName, logo: centerLogo),
+                const SizedBox(height: AppSpacing.md),
+                _QuickActions(
+                  unread: unread,
+                  onCodes: () => context.push(centerAdminActivationCodesPath),
+                  onAddStudent: _addStudent,
+                  onInbox: _openInbox,
+                  onSettings: () => context.push(centerAdminSettingsPath),
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 // Newest subscription requests first — each opens activation.
                 _PendingRequestsSection(async: pendingAsync),
@@ -105,33 +255,30 @@ class CenterDashboardScreen extends ConsumerWidget {
                   )
                 else
                   _StatsGrid(stats: data?.stats, columns: wide ? 4 : 2),
-                const AdminSectionTitle('الأقسام'),
-                GridView.count(
-                  crossAxisCount: wide ? 6 : 4,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: AppSpacing.sm,
-                  crossAxisSpacing: AppSpacing.sm,
-                  childAspectRatio: 0.9,
-                  children: [
-                    for (final (icon, label, path) in _sections)
-                      path == centerAdminStudentsPath && pendingCount > 0
-                          ? Badge(
-                              label: Text('$pendingCount'),
-                              offset: const Offset(-6, 6),
-                              child: AdminMenuItem(
-                                icon: icon,
-                                label: label,
-                                onTap: () => context.push(path),
-                              ),
-                            )
-                          : AdminMenuItem(
-                              icon: icon,
-                              label: label,
-                              onTap: () => context.push(path),
-                            ),
-                  ],
-                ),
+                for (final (title, items) in CenterDashboardScreen._groups) ...[
+                  AdminSectionTitle(title),
+                  GridView.count(
+                    crossAxisCount: wide ? 6 : 4,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: AppSpacing.sm,
+                    crossAxisSpacing: AppSpacing.sm,
+                    childAspectRatio: 0.9,
+                    children: [
+                      for (final (icon, label, path) in items)
+                        _menuItem(
+                          icon,
+                          label,
+                          path,
+                          badge: path == centerAdminStudentsPath
+                              ? pendingCount
+                              : path == centerAdminInboxPath
+                              ? unread
+                              : 0,
+                        ),
+                    ],
+                  ),
+                ],
                 if (data != null) ...[
                   AdminSectionTitle(
                     'آخر الاشتراكات',
@@ -435,6 +582,91 @@ class _PendingRequestsSection extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// "توليد أكواد" / "إضافة طالب" / "الإشعارات" / "الإعدادات".
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({
+    required this.unread,
+    required this.onCodes,
+    required this.onAddStudent,
+    required this.onInbox,
+    required this.onSettings,
+  });
+
+  final int unread;
+  final VoidCallback onCodes;
+  final VoidCallback onAddStudent;
+  final VoidCallback onInbox;
+  final VoidCallback onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
+    Widget action(
+      IconData icon,
+      String label,
+      VoidCallback onTap, {
+      int badge = 0,
+    }) {
+      return Expanded(
+        child: Material(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                vertical: AppSpacing.md,
+                horizontal: AppSpacing.xs,
+              ),
+              child: Column(
+                children: [
+                  Badge(
+                    isLabelVisible: badge > 0,
+                    label: Text(badge > 99 ? '99+' : '$badge'),
+                    child: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: scheme.primaryContainer,
+                      child: Icon(icon, color: scheme.onPrimaryContainer),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        action(Icons.vpn_key_rounded, 'توليد أكواد', onCodes),
+        const SizedBox(width: AppSpacing.sm),
+        action(Icons.person_add_alt_1_rounded, 'إضافة طالب', onAddStudent),
+        const SizedBox(width: AppSpacing.sm),
+        action(
+          Icons.notifications_rounded,
+          'الإشعارات',
+          onInbox,
+          badge: unread,
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        action(Icons.settings_rounded, 'الإعدادات', onSettings),
+      ],
     );
   }
 }

@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:itaaleem/features/center_admin/presentation/center_admin_routes.dart';
 
 /// The interactive half of push notifications — permission + token
 /// registration, foreground display, and tap-to-navigate. Firebase itself
@@ -118,11 +119,7 @@ class FcmService {
       final device = await _deviceIdentityService.getIdentity();
       final response = await _dio.post<dynamic>(
         ApiEndpoints.fcmToken,
-        data: {
-          'token': token,
-          'fcm_token': token,
-          'device_id': device.deviceId,
-        },
+        data: {'token': token, 'fcm_token': token, ...device.toJson()},
       );
       _registeredKey = key;
       if (kDebugMode) {
@@ -196,7 +193,7 @@ class FcmService {
     }
     FirebaseMessaging.onMessageOpenedApp.listen(
       (message) =>
-          _navigateForType(message.data['type'], _targetId(message.data)),
+          _navigateForType(_typeOf(message.data), _targetId(message.data)),
     );
     // A push that launched the app from fully terminated never fires
     // onMessageOpenedApp (the app wasn't running yet to listen) — this is
@@ -204,7 +201,7 @@ class FcmService {
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
       _pendingNavigation = (
-        type: initialMessage.data['type'],
+        type: _typeOf(initialMessage.data),
         id: _targetId(initialMessage.data),
       );
       // The session may already be up by the time this resolves.
@@ -240,11 +237,22 @@ class FcmService {
     if (payload == null || payload.isEmpty) return;
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      _navigateForType(data['type'], _targetId(data));
+      _navigateForType(_typeOf(data), _targetId(data));
     } catch (e) {
       if (kDebugMode) debugPrint('[FcmService] bad notification payload: $e');
     }
   }
+
+  /// A push for the center admin's own inbox (`data.source ==
+  /// "center_inbox"`, or the older `activation_code_redeemed` type) maps to
+  /// [_centerInboxType]; every other push keeps its own `type`.
+  static Object? _typeOf(Map<String, dynamic> data) =>
+      data['source'] == 'center_inbox' ||
+          data['type'] == 'activation_code_redeemed'
+      ? _centerInboxType
+      : data['type'];
+
+  static const _centerInboxType = '__center_inbox__';
 
   static Object? _targetId(Map<String, dynamic> data) =>
       data['id'] ??
@@ -265,12 +273,35 @@ class FcmService {
         : int.tryParse(id?.toString() ?? '');
 
     switch (type) {
+      case _centerInboxType:
+        context.push(centerAdminInboxPath);
       case 'lecture' when parsedId != null:
         context.push('/lectures/$parsedId');
       case 'exam' when parsedId != null:
         context.push('/exams/$parsedId');
       default:
         context.go(notificationsPath);
+    }
+  }
+
+  /// Logout: asks the server to forget this device's push token
+  /// (`DELETE /fcm-token`, best effort — an older server without it just
+  /// fails silently; `POST /logout` revokes the session anyway). Must run
+  /// while the auth token is still valid.
+  Future<void> unregisterFromServer() async {
+    if (_studentId == null && _registeredKey == null) return;
+    try {
+      final device = await _deviceIdentityService.getIdentity();
+      await _dio.delete<dynamic>(
+        ApiEndpoints.fcmToken,
+        data: device.toJson(),
+        options: Options(
+          sendTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+        ),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('[FcmService] DELETE /fcm-token failed: $e');
     }
   }
 

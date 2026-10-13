@@ -290,7 +290,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
         footer: AuthFooterLink(
           prompt: 'عندك حساب؟',
-          action: 'سجل دخول',
+          action: 'سجّل دخول',
           onTap: () => context.go(loginPath),
         ),
       ),

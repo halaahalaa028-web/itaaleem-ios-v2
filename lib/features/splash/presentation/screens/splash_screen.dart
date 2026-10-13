@@ -475,6 +475,7 @@ class _CenterLogo extends StatelessWidget {
       child: ClipOval(
         child: CachedNetworkImage(
           imageUrl: url,
+          memCacheWidth: 360,
           fit: BoxFit.cover,
           fadeInDuration: const Duration(milliseconds: 300),
           placeholder: (context, url) => const SizedBox.shrink(),

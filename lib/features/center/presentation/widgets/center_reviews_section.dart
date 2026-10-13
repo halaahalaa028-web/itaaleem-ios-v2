@@ -14,7 +14,6 @@ import 'package:itaaleem/core/widgets/app_toast.dart';
 import 'package:itaaleem/features/center/data/models/center_review.dart';
 import 'package:itaaleem/features/center/presentation/providers/reviews_providers.dart';
 import 'package:itaaleem/features/center/presentation/widgets/review_widgets.dart';
-import 'package:itaaleem/core/theme/app_radius.dart';
 
 /// Edit/delete menu for the student's own review — shared by the home
 /// section and the full reviews screen.
@@ -68,7 +67,7 @@ class OwnReviewMenu extends ConsumerWidget {
       icon: Icon(Icons.more_vert_rounded, color: context.palette.textTertiary),
       onSelected: (v) {
         if (v == 'edit') {
-          context.push('$centerReviewFormPath/$centerId', extra: review);
+          showReviewSheet(context, centerId: centerId, existing: review);
         } else {
           _delete(context, ref);
         }
@@ -175,7 +174,7 @@ class _Content extends StatelessWidget {
         state.summary?.average ??
         (fallbackRating > 0 ? fallbackRating : computed);
     final mine = state.mine;
-    final latest = items.take(3).toList();
+    final others = items.where((r) => !r.isOwner).take(3).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -186,30 +185,35 @@ class _Content extends StatelessWidget {
           distribution: state.summary?.distribution,
         ),
         const SizedBox(height: AppSpacing.md),
-        if (mine == null)
-          AppButton.primary(
-            'أضف تقييمك',
-            icon: Icons.star_rounded,
-            onPressed: () => context.push('$centerReviewFormPath/$centerId'),
-          )
-        else ...[
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: () =>
+                showReviewSheet(context, centerId: centerId, existing: mine),
+            icon: Icon(
+              mine == null ? Icons.star_outline_rounded : Icons.edit_outlined,
+              size: 18,
+            ),
+            label: Text(mine == null ? 'أضف تقييمك' : 'تعديل تقييمك'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(160, 42),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ),
+        if (mine != null) ...[
+          const SizedBox(height: AppSpacing.base),
           const _Label('تقييمك'),
           ReviewCard(
             review: mine,
             trailing: OwnReviewMenu(centerId: centerId, review: mine),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          AppButton.secondary(
-            'تعديل تقييمي',
-            icon: Icons.edit_rounded,
-            onPressed: () =>
-                context.push('$centerReviewFormPath/$centerId', extra: mine),
-          ),
         ],
-        if (latest.where((r) => !r.isOwner).isNotEmpty) ...[
+        if (others.isNotEmpty) ...[
           const SizedBox(height: AppSpacing.base),
           const _Label('آخر التعليقات'),
-          for (final r in latest.where((r) => !r.isOwner))
+          for (final r in others)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: ReviewCard(review: r),
@@ -234,16 +238,17 @@ class _Label extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(
       text,
-      style: TextStyle(
-        fontFamily: 'Cairo',
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: context.palette.textSecondary,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     ),
   );
 }
 
+/// One row: the big average with stars + count on the start side, the
+/// 5★→1★ bars on the other. Without a distribution: number + stars only,
+/// centered.
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.average,
@@ -257,51 +262,59 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
+    final scheme = Theme.of(context).colorScheme;
+    final text = Theme.of(context).textTheme;
     final dist = distribution;
     final total = dist == null ? 0 : dist.values.fold<int>(0, (a, b) => a + b);
+    final hasBars = dist != null && total > 0;
 
-    return AppCard(
-      child: Row(
-        children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                average.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontFamily: 'Cairo',
-                  fontSize: 40,
-                  height: 1.1,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              StarRow(rating: average, size: 16),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                '$count تقييم',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: palette.textSecondary),
-              ),
-            ],
+    final score = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          average.toStringAsFixed(1),
+          style: text.displaySmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            height: 1.1,
           ),
-          if (dist != null && total > 0) ...[
-            const SizedBox(width: AppSpacing.lg),
-            Expanded(
-              child: Column(
-                children: [
-                  for (var star = 5; star >= 1; star--)
-                    _DistributionBar(
-                      star: star,
-                      fraction: (dist[star] ?? 0) / total,
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ],
+        ),
+        const SizedBox(height: 2),
+        StarRow(rating: average, size: 16),
+        const SizedBox(height: 2),
+        Text(
+          '$count تقييم',
+          style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      ],
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
       ),
+      child: hasBars
+          ? Row(
+              children: [
+                score,
+                const SizedBox(width: AppSpacing.lg),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (var star = 5; star >= 1; star--)
+                        _DistributionBar(
+                          star: star,
+                          fraction: (dist[star] ?? 0) / total,
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          : Center(child: score),
     );
   }
 }
@@ -314,43 +327,31 @@ class _DistributionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final palette = context.palette;
+    final scheme = Theme.of(context).colorScheme;
+    final small = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
           SizedBox(
-            width: 34,
+            width: 26,
             child: Row(
               children: [
-                Text(
-                  '$star',
-                  style: const TextStyle(fontFamily: 'Cairo', fontSize: 11),
-                ),
-                Icon(Icons.star_rounded, size: 12, color: context.palette.gold),
+                Text('$star', style: small),
+                Icon(Icons.star_rounded, size: 11, color: context.palette.gold),
               ],
             ),
           ),
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.xs),
+              borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: fraction,
-                minHeight: 6,
-                backgroundColor: palette.surfaceVariant,
+                minHeight: 5,
+                backgroundColor: scheme.surfaceContainerHighest,
                 valueColor: AlwaysStoppedAnimation(context.palette.gold),
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 38,
-            child: Text(
-              '${(fraction * 100).round()}%',
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontFamily: 'Cairo',
-                fontSize: 11,
-                color: palette.textSecondary,
               ),
             ),
           ),

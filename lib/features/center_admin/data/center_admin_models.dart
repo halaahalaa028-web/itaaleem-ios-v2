@@ -205,3 +205,16 @@ Map<String, dynamic> extractAdminObject(Object? body) {
       : (meta?['next_page_url'] != null || itemCount >= perPage);
   return (page: current, hasMore: hasMore && itemCount > 0);
 }
+
+/// The result of `POST activation-codes` with a scope.
+class GeneratedCodesBatch {
+  const GeneratedCodesBatch({
+    required this.codes,
+    this.batchId,
+    this.batchName,
+  });
+
+  final String? batchId;
+  final String? batchName;
+  final List<AdminRecord> codes;
+}

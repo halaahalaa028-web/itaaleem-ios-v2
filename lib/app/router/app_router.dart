@@ -1,6 +1,8 @@
+import 'package:itaaleem/features/auth/presentation/screens/force_change_password_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_dashboard_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_request_approve_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_activation_codes_screen.dart';
+import 'package:itaaleem/features/center_admin/presentation/screens/center_inbox_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_students_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_student_detail_screen.dart';
 import 'package:itaaleem/features/center_admin/presentation/screens/center_subjects_screen.dart';
@@ -31,6 +33,7 @@ import 'package:itaaleem/features/account/presentation/screens/about_screen.dart
 import 'package:itaaleem/features/account/presentation/screens/support_screen.dart';
 import 'package:itaaleem/features/activation/presentation/screens/activation_screen.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
+import 'package:itaaleem/features/auth/presentation/providers/signed_in_before_provider.dart';
 import 'package:itaaleem/features/auth/presentation/screens/change_password_screen.dart';
 import 'package:itaaleem/features/auth/presentation/screens/edit_profile_screen.dart';
 import 'package:itaaleem/features/channel/presentation/screens/channel_image_viewer_screen.dart';
@@ -81,6 +84,7 @@ import 'package:itaaleem/app/router/page_transition.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:itaaleem/core/widgets/secure_screen.dart';
+import 'package:itaaleem/core/widgets/content_width_limit.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -89,6 +93,7 @@ const lessonVideoPath = '/lesson-video';
 const loginPath = '/login';
 const registerPath = '/register';
 const forgotPasswordPath = '/forgot-password';
+const forceChangePasswordPath = '/change-password-required';
 const homePath = '/home';
 const maintenancePath = '/maintenance';
 const notificationsPath = '/notifications';
@@ -262,13 +267,28 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path == registerPath ||
           path == forgotPasswordPath;
 
+      // Very first open (nobody ever signed in here) → "إنشاء حساب";
+      // after a logout → "تسجيل الدخول". Fails toward login.
+      final authEntryPath =
+          (ref.read(signedInBeforeProvider).valueOrNull ?? true)
+          ? loginPath
+          : registerPath;
+
       if (path == onboardingPath || path == permissionsOnboardingPath) {
-        return isLoggedIn ? homePath : loginPath;
+        return isLoggedIn ? homePath : authEntryPath;
       }
 
       if (!isLoggedIn) {
-        return isAuthRoute ? null : loginPath;
+        return isAuthRoute ? null : authEntryPath;
       }
+
+      // A temporary password from the center: nothing else is reachable
+      // until it's changed (`must_change_password`).
+      final mustChange = authState.valueOrNull?.mustChangePassword ?? false;
+      if (mustChange) {
+        return path == forceChangePasswordPath ? null : forceChangePasswordPath;
+      }
+      if (path == forceChangePasswordPath) return homePath;
 
       // The joined center was deactivated server-side (flagged by a 403 on
       // any content endpoint, or the center's own `is_active: false`) —
@@ -317,6 +337,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: loginPath,
         pageBuilder: (context, state) =>
             buildPageWithTransition(state: state, child: const LoginScreen()),
+      ),
+      GoRoute(
+        path: forceChangePasswordPath,
+        pageBuilder: (context, state) => buildPageWithTransition(
+          state: state,
+          child: const ForceChangePasswordScreen(),
+        ),
       ),
       GoRoute(
         path: forgotPasswordPath,
@@ -378,8 +405,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state: state,
           child: CenterProfileScreen(
             centerId: int.parse(state.pathParameters['id']!),
-            preview: state.extra is CenterModel
-                ? state.extra! as CenterModel
+            preview: extraOf(state) is CenterModel
+                ? extraOf(state)! as CenterModel
                 : null,
           ),
         ),
@@ -390,8 +417,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state: state,
           child: SelectGradeScreen(
             centerId: int.parse(state.pathParameters['centerId']!),
-            preview: state.extra is CenterModel
-                ? state.extra! as CenterModel
+            preview: extraOf(state) is CenterModel
+                ? extraOf(state)! as CenterModel
                 : null,
           ),
         ),
@@ -411,8 +438,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           state: state,
           child: ReviewFormScreen(
             centerId: int.parse(state.pathParameters['centerId']!),
-            existing: state.extra is CenterReview
-                ? state.extra! as CenterReview
+            existing: extraOf(state) is CenterReview
+                ? extraOf(state)! as CenterReview
                 : null,
           ),
         ),
@@ -436,8 +463,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         pageBuilder: (context, state) => buildPageWithTransition(
           state: state,
           child: ContactCenterScreen(
-            preview: state.extra is CenterModel
-                ? state.extra! as CenterModel
+            preview: extraOf(state) is CenterModel
+                ? extraOf(state)! as CenterModel
                 : null,
           ),
         ),
@@ -451,7 +478,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: notificationsPath,
         pageBuilder: (context, state) => buildPageWithTransition(
           state: state,
-          child: const NotificationsScreen(),
+          child: const ContentWidthLimit.page(child: NotificationsScreen()),
         ),
       ),
       GoRoute(
@@ -476,7 +503,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/lectures/:id',
         pageBuilder: (context, state) {
-          final extra = state.extra;
+          final extra = extraOf(state);
           final navArgs = extra is LectureNavArgs
               ? extra
               : LectureNavArgs(title: extra is String ? extra : null);
@@ -501,7 +528,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           child: PdfViewerScreen(
             lectureId: int.parse(state.pathParameters['lectureId']!),
             pdfId: int.parse(state.pathParameters['pdfId']!),
-            initialTitle: state.extra is String ? state.extra! as String : null,
+            initialTitle: extraOf(state) is String
+                ? extraOf(state)! as String
+                : null,
           ),
         ),
       ),
@@ -510,9 +539,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/exams/:id',
         pageBuilder: (context, state) => buildPageWithTransition(
           state: state,
-          child: ExamDetailsScreen(
-            // A malformed id lands on the screen's "لا يمكن فتح" state.
-            examId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+          child: ContentWidthLimit.page(
+            child: ExamDetailsScreen(
+              // A malformed id lands on the screen's "لا يمكن فتح" state.
+              examId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+            ),
           ),
         ),
       ),
@@ -552,13 +583,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: subjectsPath,
         pageBuilder: (context, state) => buildPageWithTransition(
           state: state,
-          child: const SubjectsScreen(),
+          child: const ContentWidthLimit.page(child: SubjectsScreen()),
         ),
       ),
       GoRoute(
         path: examReviewPath,
         pageBuilder: (context, state) {
-          final args = state.extra;
+          final args = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: args is ExamReviewArgs
@@ -581,8 +612,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: examsPath,
         pageBuilder: (context, state) => buildPageWithTransition(
           state: state,
-          child: ExamsScreen(
-            subjectId: int.tryParse(state.uri.queryParameters['subject'] ?? ''),
+          child: ContentWidthLimit.page(
+            child: ExamsScreen(
+              subjectId: int.tryParse(
+                state.uri.queryParameters['subject'] ?? '',
+              ),
+            ),
           ),
         ),
       ),
@@ -590,15 +625,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/subject-detail/:id',
         pageBuilder: (context, state) => buildPageWithTransition(
           state: state,
-          child: SubjectDetailScreen(
-            subjectId: int.parse(state.pathParameters['id']!),
+          child: ContentWidthLimit.page(
+            child: SubjectDetailScreen(
+              subjectId: int.parse(state.pathParameters['id']!),
+            ),
           ),
         ),
       ),
       GoRoute(
         path: '/lessons/:id',
         pageBuilder: (context, state) {
-          final extra = state.extra;
+          final extra = extraOf(state);
           if (extra is! LessonDetailNavArgs) {
             // Always navigated to with extra from SubjectDetailScreen —
             // there's no standalone GET /lessons/{id} this screen could
@@ -611,10 +648,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           }
           return buildPageWithTransition(
             state: state,
-            child: LessonDetailScreen(
-              lesson: extra.lesson,
-              subjectId: extra.subjectId,
-              subjectExams: extra.subjectExams,
+            child: ContentWidthLimit.page(
+              child: LessonDetailScreen(
+                lesson: extra.lesson,
+                subjectId: extra.subjectId,
+                subjectExams: extra.subjectExams,
+              ),
             ),
           );
         },
@@ -670,8 +709,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   state: state,
                   child: CenterStudentDetailScreen(
                     studentId: int.parse(state.pathParameters['id']!),
-                    preview: state.extra is AdminRecord
-                        ? state.extra! as AdminRecord
+                    preview: extraOf(state) is AdminRecord
+                        ? extraOf(state)! as AdminRecord
                         : null,
                   ),
                 ),
@@ -691,8 +730,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   state: state,
                   child: CenterSubjectDetailScreen(
                     subjectId: int.parse(state.pathParameters['id']!),
-                    preview: state.extra is AdminRecord
-                        ? state.extra! as AdminRecord
+                    preview: extraOf(state) is AdminRecord
+                        ? extraOf(state)! as AdminRecord
                         : null,
                   ),
                 ),
@@ -712,8 +751,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   state: state,
                   child: CenterTeacherDetailScreen(
                     teacherId: int.parse(state.pathParameters['id']!),
-                    preview: state.extra is AdminRecord
-                        ? state.extra! as AdminRecord
+                    preview: extraOf(state) is AdminRecord
+                        ? extraOf(state)! as AdminRecord
                         : null,
                   ),
                 ),
@@ -733,8 +772,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   state: state,
                   child: CenterLectureDetailScreen(
                     lectureId: int.parse(state.pathParameters['id']!),
-                    preview: state.extra is AdminRecord
-                        ? state.extra! as AdminRecord
+                    preview: extraOf(state) is AdminRecord
+                        ? extraOf(state)! as AdminRecord
                         : null,
                   ),
                 ),
@@ -754,8 +793,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   state: state,
                   child: CenterExamResultsScreen(
                     examId: int.parse(state.pathParameters['id']!),
-                    preview: state.extra is AdminRecord
-                        ? state.extra! as AdminRecord
+                    preview: extraOf(state) is AdminRecord
+                        ? extraOf(state)! as AdminRecord
                         : null,
                   ),
                 ),
@@ -810,9 +849,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: 'requests/:id',
             pageBuilder: (context, state) => buildPageWithTransition(
               state: state,
-              child: state.extra is AdminRecord
+              child: extraOf(state) is AdminRecord
                   ? CenterRequestApproveScreen(
-                      request: state.extra! as AdminRecord,
+                      request: extraOf(state)! as AdminRecord,
                     )
                   : const _MissingArgsScreen(),
             ),
@@ -822,6 +861,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) => buildPageWithTransition(
               state: state,
               child: const CenterActivationCodesScreen(),
+            ),
+          ),
+          GoRoute(
+            path: 'inbox',
+            pageBuilder: (context, state) => buildPageWithTransition(
+              state: state,
+              child: const CenterInboxScreen(),
             ),
           ),
         ],
@@ -846,8 +892,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   state: state,
                   child: AdminStudentDetailsScreen(
                     studentId: int.parse(state.pathParameters['id']!),
-                    preview: state.extra is AdminStudent
-                        ? state.extra! as AdminStudent
+                    preview: extraOf(state) is AdminStudent
+                        ? extraOf(state)! as AdminStudent
                         : null,
                   ),
                 ),
@@ -910,7 +956,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: lessonPdfPath,
         pageBuilder: (context, state) {
-          final args = state.extra;
+          final args = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: args is LessonPdfArgs
@@ -927,7 +973,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: lessonAttachmentsPath,
         pageBuilder: (context, state) {
-          final args = state.extra;
+          final args = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: args is LessonAttachmentsArgs
@@ -942,7 +988,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: lessonExamsPath,
         pageBuilder: (context, state) {
-          final exams = state.extra;
+          final exams = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: exams is List<SubjectExam>
@@ -954,7 +1000,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: examTakingPath,
         pageBuilder: (context, state) {
-          final args = state.extra;
+          final args = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: args is ExamTakingArgs
@@ -978,7 +1024,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: examResultPath,
         pageBuilder: (context, state) {
-          final args = state.extra;
+          final args = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: args is ExamResultArgs
@@ -996,7 +1042,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: channelImagePath,
         pageBuilder: (context, state) {
-          final url = state.extra;
+          final url = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: url is String
@@ -1008,7 +1054,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: imageViewerPath,
         pageBuilder: (context, state) {
-          final url = state.extra;
+          final url = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: url is String
@@ -1028,7 +1074,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           if (kDebugMode) {
             debugPrint('>>> VIDEO: route built via GoRouter push');
           }
-          final extra = state.extra;
+          final extra = extraOf(state);
           return buildPageWithTransition(
             state: state,
             child: extra is LessonVideoArgs
@@ -1046,6 +1092,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// `state.extra`, remembered per location. GoRouter keeps `extra` only in
+/// memory and can hand a page back *without* it when it rebuilds the stack
+/// (a `refreshListenable` redirect pass after returning from another screen
+/// — e.g. lecture → "تواصل مع المركز" → back while the profile/subscription
+/// re-check fires). Pages built from `extra` then showed "تعذر فتح الصفحة".
+/// Every route reads its args through this, so a rebuild gets the same
+/// args the page was first opened with.
+final _extraByLocation = <String, Object>{};
+const _maxRememberedExtras = 40;
+
+Object? extraOf(GoRouterState state) {
+  final key = state.uri.toString();
+  final extra = state.extra;
+  if (extra != null) {
+    _extraByLocation.remove(key);
+    _extraByLocation[key] = extra;
+    if (_extraByLocation.length > _maxRememberedExtras) {
+      _extraByLocation.remove(_extraByLocation.keys.first);
+    }
+    return extra;
+  }
+  return _extraByLocation[key];
+}
 
 /// Shown when a route that needs `state.extra` is reached without it (e.g. a
 /// process restore that dropped the in-memory args) — a visible screen with a

@@ -1,4 +1,4 @@
-import 'package:itaaleem/features/subjects/presentation/providers/subjects_providers.dart';
+import 'package:itaaleem/features/activation/presentation/providers/activation_invalidation.dart';
 import 'dart:async';
 
 import 'package:itaaleem/app/router/app_router.dart';
@@ -6,8 +6,6 @@ import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/utils/result.dart';
 import 'package:itaaleem/features/activation/presentation/providers/activation_providers.dart';
 import 'package:itaaleem/features/auth/presentation/providers/auth_controller.dart';
-import 'package:itaaleem/features/courses/presentation/providers/courses_providers.dart';
-import 'package:itaaleem/features/home/presentation/providers/home_subjects_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:itaaleem/core/design/design.dart';
 import 'package:itaaleem/core/theme/app_radius.dart';
@@ -60,6 +58,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    HapticFeedback.lightImpact();
 
     setState(() {
       _submitting = true;
@@ -94,15 +93,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
         // course shows up on the home tab without a manual app restart, and
         // refresh the student's own profile in case activation changed it
         // (e.g. subscription status).
-        ref.invalidate(coursesProvider);
-        ref.invalidate(availableCoursesProvider);
-        ref.invalidate(homeSubjectsProvider);
-        ref.invalidate(subjectsListProvider);
-        ref.invalidate(subjectDetailsProvider);
-        ref.invalidate(homeLessonsProvider);
-        ref.invalidate(attachmentsProvider);
-        ref.invalidate(lessonAttachmentsProvider);
-        unawaited(ref.read(authControllerProvider.notifier).refreshProfile());
+        invalidateAfterActivation(ref);
         setState(() {
           _submitting = false;
           _outcome = _ActivationOutcome.success(value);

@@ -58,7 +58,11 @@ Future<void> showContactCenterAccessSheet(BuildContext context) {
               ),
               onPressed: () {
                 Navigator.of(sheetContext).pop();
-                context.push<void>(contactCenterPath);
+                // The root navigator's context: the caller may be gone by
+                // now, and back must return to the screen underneath as is.
+                (rootNavigatorKey.currentContext ?? context).push<void>(
+                  contactCenterPath,
+                );
               },
               icon: const Icon(Icons.support_agent_rounded),
               label: const Text('تواصل مع المركز'),

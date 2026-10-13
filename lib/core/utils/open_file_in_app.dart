@@ -1,3 +1,4 @@
+import 'package:itaaleem/core/widgets/app_sheet.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -58,9 +59,7 @@ Future<void> openFileInApp(
   }
 
   final dio = ProviderScope.containerOf(context).read(dioClientProvider);
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(const SnackBar(content: Text('جاري فتح الملف...')));
+  showAppSnack(context, 'جاري فتح الملف...', type: AppSnackType.info);
   try {
     final dir = await getTemporaryDirectory();
     final name = Uri.tryParse(url)?.pathSegments.lastOrNull ?? '';

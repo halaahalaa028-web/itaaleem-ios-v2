@@ -1299,6 +1299,7 @@ class _AdvancedDirectPlayerState extends State<AdvancedDirectPlayer> {
           if (thumbnail != null && thumbnail.isNotEmpty)
             CachedNetworkImage(
               imageUrl: thumbnail,
+              memCacheWidth: 1280,
               fit: BoxFit.cover,
               fadeInDuration: Duration.zero,
               placeholder: (context, url) => const SizedBox.shrink(),

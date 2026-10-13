@@ -1,3 +1,4 @@
+import 'package:itaaleem/core/content/content_policy.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
@@ -35,6 +36,7 @@ import 'package:dio/dio.dart' as dio;
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:itaaleem/core/widgets/content_watermark.dart';
+import 'package:itaaleem/core/widgets/server_watermark.dart';
 import 'package:flutter/material.dart';
 import 'package:itaaleem/features/subjects/presentation/widgets/lesson_access.dart';
 import 'package:itaaleem/features/subjects/data/content_file_access.dart';
@@ -447,21 +449,23 @@ class _LecturePlayerScreenState extends ConsumerState<LecturePlayerScreen>
       alignment: Alignment.center,
       children: [
         Center(child: _buildPlayerFor(video!, title)),
-        if (student != null) ...[
+        if (student != null)
           Positioned.fill(
-            child: ContentWatermark(
-              studentName: student.fullName,
-              studentPhone: student.mobile,
-              opacity: 0.06,
+            child: ProtectedWatermark(
+              lessonId: widget.lectureId,
+              legacy: [
+                ContentWatermark(
+                  studentName: student.fullName,
+                  studentPhone: student.mobile,
+                  opacity: 0.06,
+                ),
+                IdentityWatermark(
+                  studentName: student.fullName,
+                  studentMobile: student.mobile,
+                ),
+              ],
             ),
           ),
-          Positioned.fill(
-            child: IdentityWatermark(
-              studentName: student.fullName,
-              studentMobile: student.mobile,
-            ),
-          ),
-        ],
       ],
     );
 
@@ -476,6 +480,7 @@ class _LecturePlayerScreenState extends ConsumerState<LecturePlayerScreen>
     final showDownload =
         !_isDemo &&
         details.isDownloadable &&
+        ref.watch(contentPolicyProvider).canDownloadVideo &&
         video?.provider == VideoProvider.privateServer;
 
     // [withPlayer] false → the video is mounted elsewhere (above the tabs, in
@@ -1366,7 +1371,10 @@ class _AttachmentsTabState extends ConsumerState<_AttachmentsTab> {
             subtitle: pdf.readPercentage > 0
                 ? 'تمت قراءة ${pdf.readPercentage.round()}٪'
                 : null,
-            isDownloadable: pdf.isDownloadable && !pdf.locked,
+            isDownloadable:
+                pdf.isDownloadable &&
+                !pdf.locked &&
+                ref.watch(contentPolicyProvider).canDownloadPdf,
             locked: pdf.locked,
             isDownloading: _progress.containsKey('pdf-${pdf.id}'),
             downloadProgress: _progress['pdf-${pdf.id}'],
@@ -1856,20 +1864,23 @@ class _PdfPaneState extends ConsumerState<_PdfPane> {
               },
             ),
           ),
-          if (student != null) ...[
+          if (student != null)
             Positioned.fill(
-              child: ContentWatermark(
-                studentName: student.fullName,
-                studentPhone: student.mobile,
+              child: ProtectedWatermark(
+                lessonId: null,
+                isPdf: true,
+                legacy: [
+                  ContentWatermark(
+                    studentName: student.fullName,
+                    studentPhone: student.mobile,
+                  ),
+                  IdentityWatermark(
+                    studentName: student.fullName,
+                    studentMobile: student.mobile,
+                  ),
+                ],
               ),
             ),
-            Positioned.fill(
-              child: IdentityWatermark(
-                studentName: student.fullName,
-                studentMobile: student.mobile,
-              ),
-            ),
-          ],
         ],
       );
     }

@@ -35,11 +35,7 @@ CenterModel centerModelFromJson(Map<String, dynamic> json) {
 
     email: _nonEmptyString(json['email'] ?? json['contact_email']),
 
-    socialLinks: rawSocial is Map
-        ? rawSocial.map(
-            (key, value) => MapEntry(key.toString(), value?.toString()),
-          )
-        : const {},
+    socialLinks: socialLinksFromJson(rawSocial),
 
     // API may return rating as String ("0.00") or num (0.0)
     rating: double.tryParse(json['rating']?.toString() ?? '') ?? 0.0,
@@ -74,4 +70,25 @@ GradeModel gradeModelFromJson(Map<String, dynamic> json) {
     name: json['name'] as String? ?? '',
     sortOrder: int.tryParse(json['sort_order']?.toString() ?? '') ?? 0,
   );
+}
+
+/// `social_links` — a list of `{platform, url, icon}` in the server's order
+/// (an older server sent a `{platform: url}` map). Empty urls are dropped.
+Map<String, String?> socialLinksFromJson(Object? raw) {
+  final links = <String, String?>{};
+  void add(Object? platform, Object? url) {
+    final key = platform?.toString().trim().toLowerCase() ?? '';
+    final value = url?.toString().trim() ?? '';
+    if (key.isEmpty || value.isEmpty || links.containsKey(key)) return;
+    links[key] = value;
+  }
+
+  if (raw is List) {
+    for (final item in raw) {
+      if (item is Map) add(item['platform'] ?? item['icon'], item['url']);
+    }
+  } else if (raw is Map) {
+    raw.forEach(add);
+  }
+  return links;
 }

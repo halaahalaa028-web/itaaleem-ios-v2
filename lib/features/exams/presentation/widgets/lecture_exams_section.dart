@@ -1,3 +1,6 @@
+import 'package:itaaleem/features/activation/presentation/screens/activation_screen.dart'
+    show pushActivationScreen;
+import 'package:itaaleem/core/utils/platform_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -164,8 +167,10 @@ class _LectureExamCard extends ConsumerWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: exam.isLocked || exam.id <= 0
+        onTap: exam.id <= 0
             ? null
+            : exam.isLocked
+            ? (PlatformUtils.hideSubscriptions ? null : pushActivationScreen)
             : () => context.push('/exams/${exam.id}'),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),

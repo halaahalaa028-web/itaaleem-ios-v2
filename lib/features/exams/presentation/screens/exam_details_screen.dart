@@ -1,3 +1,4 @@
+import 'package:itaaleem/core/widgets/locked_content_view.dart';
 import 'package:itaaleem/core/error/failure.dart';
 import 'package:itaaleem/core/utils/result.dart';
 import 'package:itaaleem/core/widgets/app_toast.dart';
@@ -43,12 +44,14 @@ class ExamDetailsScreen extends ConsumerWidget {
       body: AppBackground(
         child: detailsAsync.when(
           loading: () => const ShimmerDetail(heroHeight: 160),
-          error: (error, stackTrace) => ErrorView(
-            // 404 → "الامتحان غير متوفر", 429 → rate limit, 422 → server text.
-            message: failureOf(error).message,
-            retryLabel: 'إعادة المحاولة',
-            onRetry: () => ref.invalidate(examDetailsProvider(examId)),
-          ),
+          error: (error, stackTrace) => isLockedContentError(error)
+              ? const LockedContentView()
+              : ErrorView(
+                  // 404 → "الامتحان غير متوفر", 429 → rate limit, 422 → server text.
+                  message: failureOf(error).message,
+                  retryLabel: 'إعادة المحاولة',
+                  onRetry: () => ref.invalidate(examDetailsProvider(examId)),
+                ),
           data: (details) => _ExamDetailsBody(details: details, examId: examId),
         ),
       ),

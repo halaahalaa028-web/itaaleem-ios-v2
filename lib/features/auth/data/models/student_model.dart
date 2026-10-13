@@ -18,6 +18,7 @@ class StudentModel extends Student {
     super.subscriptionStatus,
     super.hasPaidAccess,
     super.role,
+    super.mustChangePassword,
   });
 
   factory StudentModel.fromJson(Map<String, dynamic> json) {
@@ -84,6 +85,7 @@ class StudentModel extends Student {
       subscriptionStatus: subscriptionStatus,
       hasPaidAccess: _asBool(json['has_paid_access']),
       role: _role(json),
+      mustChangePassword: _asBool(json['must_change_password']),
     );
     if (kDebugMode) {
       debugPrint(
@@ -145,6 +147,7 @@ class StudentModel extends Student {
     if (subscriptionStatus != null) 'subscription_status': subscriptionStatus,
     'has_paid_access': hasPaidAccess,
     if (role != null) 'role': role,
+    'must_change_password': mustChangePassword,
   };
 }
 
